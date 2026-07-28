@@ -1,11 +1,42 @@
 #!/usr/bin/env node
 /**
  * Creates Firebase Auth + Firestore test users for Champion's Journey.
+ * Reads credentials from `.env` (see `.env.example`).
+ *
  * Usage: node scripts/seed-test-accounts.mjs
  */
-const API_KEY = 'AIzaSyD5LZx2rNhoVZ1mLchT8I6jf-NXghLXB00';
-const PROJECT_ID = 'championsjourney-8dd9a';
-const PASSWORD = 'TestCJ2026!';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+function loadEnv() {
+  const path = resolve(root, '.env');
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!m) continue;
+    let v = m[2].trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1);
+    }
+    if (process.env[m[1]] === undefined) process.env[m[1]] = v;
+  }
+}
+
+loadEnv();
+
+const API_KEY = process.env.VITE_FIREBASE_API_KEY || '';
+const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || '';
+const PASSWORD = process.env.CJ_TEST_PASSWORD || 'TestCJ2026!';
+
+if (!API_KEY || !PROJECT_ID) {
+  console.error('Missing VITE_FIREBASE_API_KEY or VITE_FIREBASE_PROJECT_ID.');
+  console.error('Copy .env.example → .env and paste your Firebase web config.');
+  console.error('See docs/FIREBASE_SETUP.md');
+  process.exit(1);
+}
 
 const ACCOUNTS = [
   { email: 'student@championsjourney.test', role: 'student', name: 'Тест Ученик', level: 'beginner', track: 'fund', points: 120, plan: 'course' },
@@ -37,7 +68,7 @@ function makeState(ac) {
     user.level = ac.level || 'beginner';
     user.track = ac.track || 'fund';
   }
-  const state = {
+  return {
     user,
     lang: 'ru',
     points: ac.points || 0,
@@ -58,7 +89,6 @@ function makeState(ac) {
     ],
     coach: [{ from: 'ai', text: 'Привет! Я Coach AI. Помогу с робототехникой, FIRST и WRO.' }],
   };
-  return state;
 }
 
 function toFirestoreValue(v) {
@@ -119,6 +149,7 @@ async function saveFirestore(uid, idToken, state) {
 }
 
 async function main() {
+  console.log(`Seeding project: ${PROJECT_ID}`);
   const results = [];
   for (const ac of ACCOUNTS) {
     process.stdout.write(`Creating ${ac.email} (${ac.role})... `);
@@ -145,6 +176,8 @@ async function main() {
     else console.log(`  Error: ${r.error}`);
     console.log('');
   }
+
+  if (results.some((r) => !r.ok)) process.exit(1);
 }
 
 main().catch((e) => {

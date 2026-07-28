@@ -176,18 +176,43 @@ Teacher and admin see CRM and Path editing. Data syncs per signed-in user.
 
 ---
 
+## Cloud Run
+
+The app is a static Vite build. Deploy with the included `Dockerfile`, which serves `dist/` on **`$PORT`** (Cloud Run sets `8080`).
+
+```bash
+# Local check (must listen on 8080)
+docker build -t champions-journey .
+docker run --rm -p 8080:8080 -e PORT=8080 champions-journey
+# open http://localhost:8080
+```
+
+Cloud Build / Cloud Run must use this Dockerfile (container port **8080**, or whatever you set as `PORT`). If the container starts but does not bind `0.0.0.0:$PORT`, Cloud Run reports `failed_precondition` / “failed to start and listen on PORT”.
+
+---
+
 ## Firebase
 
-Config: `src/core/firebase.ts`. Suggested Firestore rules:
+Full setup: [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
+
+1. Enable **Authentication → Email/Password** and create a **Firestore** database.
+2. Copy `.env.example` → `.env` and paste your web `firebaseConfig`.
+3. Deploy rules: `npm run firebase:rules` (or paste `firestore.rules` in the Console).
+4. Seed demo users: `npm run firebase:seed`.
+
+Data model (only collection the app needs):
 
 ```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
+users/{uid} → { state, updated }
+```
+
+CRM and Journey content live inside `state` (`state.crm`, `state.tracks`, …).
+
+Suggested rules are in [`firestore.rules`](firestore.rules):
+
+```
+match /users/{uid} {
+  allow read, write: if request.auth != null && request.auth.uid == uid;
 }
 ```
 

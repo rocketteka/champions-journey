@@ -1,0 +1,16 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // App state per signed-in user (CRM, tracks, journey, etc.)
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Optional bootstrap / docs marker — read-only for clients
+    match /_meta/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

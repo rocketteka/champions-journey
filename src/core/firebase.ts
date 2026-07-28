@@ -10,14 +10,20 @@ import {
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import type { AppState } from './types';
 
+/** Web config from `.env` (see `.env.example` and docs/FIREBASE_SETUP.md). */
 const firebaseConfig = {
-  apiKey: 'AIzaSyD5LZx2rNhoVZ1mLchT8I6jf-NXghLXB00',
-  authDomain: 'championsjourney-8dd9a.firebaseapp.com',
-  projectId: 'championsjourney-8dd9a',
-  storageBucket: 'championsjourney-8dd9a.firebasestorage.app',
-  messagingSenderId: '1042507862137',
-  appId: '1:1042507862137:web:01bc0257d6a66a46c284a8',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
 };
+
+function isConfigured(): boolean {
+  const key = firebaseConfig.apiKey?.trim();
+  return Boolean(key && !key.startsWith('PASTE') && firebaseConfig.projectId);
+}
 
 export interface CloudApi {
   onAuth: (cb: (user: User | null) => void) => void;
@@ -42,11 +48,14 @@ export function initFirebase(onReady?: () => void): void {
   }
   booted = true;
   try {
-    if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith('PASTE')) {
+    if (!isConfigured()) {
+      console.warn(
+        'Firebase: missing VITE_FIREBASE_* in .env — cloud auth/sync disabled. See docs/FIREBASE_SETUP.md',
+      );
       onReady?.();
       return;
     }
-    const app: FirebaseApp = initializeApp(firebaseConfig);
+    const app: FirebaseApp = initializeApp(firebaseConfig as Required<typeof firebaseConfig>);
     const auth = getAuth(app);
     const db = getFirestore(app);
     cloud = {
