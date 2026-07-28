@@ -1,0 +1,29 @@
+import { resolve } from 'node:path';
+import { defineConfig } from 'vite';
+
+const pages = {
+  main: resolve(__dirname, 'index.html'),
+  login: resolve(__dirname, 'pages/login.html'),
+  auth: resolve(__dirname, 'pages/auth.html'),
+  home: resolve(__dirname, 'app/home.html'),
+  journey: resolve(__dirname, 'app/journey.html'),
+  feed: resolve(__dirname, 'app/feed.html'),
+  profile: resolve(__dirname, 'app/profile.html'),
+  crm: resolve(__dirname, 'app/crm.html'),
+  calendar: resolve(__dirname, 'app/calendar.html'),
+  materials: resolve(__dirname, 'app/materials.html'),
+  achievements: resolve(__dirname, 'app/achievements.html'),
+  subs: resolve(__dirname, 'app/subs.html'),
+  settings: resolve(__dirname, 'app/settings.html'),
+  coach: resolve(__dirname, 'app/coach.html'),
+  assess: resolve(__dirname, 'app/assess.html'),
+};
+
+export default defineConfig({
+  resolve: {
+    alias: { '@': resolve(__dirname, 'src') },
+  },
+  build: {
+    rollupOptions: { input: pages },
+  },
+});
