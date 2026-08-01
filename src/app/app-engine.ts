@@ -12,6 +12,7 @@ import {
   studentAuthPassword,
 } from '@/core/auth-ids';
 import '@/crm/register';
+import { ensureCrm } from '@/crm/migrate';
 
 declare global {
   interface Window {
@@ -102,8 +103,10 @@ const I18N = {
     nav_home:"Главная", nav_journey:"Путь", nav_feed:"Лента", nav_cal:"Календарь", nav_profile:"Профиль",
     coach_ph:"Спросите у Coach AI", coach_title:"Coach AI",
     journey:"Путь чемпиона", journey_hint:"Выполняйте уроки, получайте баллы и открывайте достижения",
+    journey_from_curriculum:"Прогресс по программе школы — разделы и уроки из Curriculum",
+    journey_edit_in_crm:"Редактировать программу",
     track_done:"завершено", lesson_done:"Урок пройден", lesson_complete:"Отметить пройденным",
-    chapter:"Глава", lessons_n:"уроков",
+    chapter:"Глава", lessons_n:"уроков", sections_n:"разделов",
     feed_title:"Новости", composer_ph:"Поделитесь успехом команды...", post_btn:"Опубликовать",
     like:"Нравится", comment:"Комментировать", add_comment:"Добавить комментарий...",
     cal_lessons:"Занятия", cal_comp:"Соревнования", add_event:"Добавить",
@@ -137,8 +140,10 @@ const I18N = {
     nav_home:"Басты", nav_journey:"Жол", nav_feed:"Лента", nav_cal:"Күнтізбе", nav_profile:"Профиль",
     coach_ph:"Coach AI-дан сұраңыз", coach_title:"Coach AI",
     journey:"Чемпион жолы", journey_hint:"Сабақтарды орындап, ұпай жинап, жетістіктер ашыңыз",
+    journey_from_curriculum:"Мектеп бағдарламасы бойынша прогресс — Curriculum бөлімдері мен сабақтары",
+    journey_edit_in_crm:"Бағдарламаны өзгерту",
     track_done:"аяқталды", lesson_done:"Сабақ өтілді", lesson_complete:"Өтілді деп белгілеу",
-    chapter:"Бөлім", lessons_n:"сабақ",
+    chapter:"Бөлім", lessons_n:"сабақ", sections_n:"бөлім",
     feed_title:"Жаңалықтар", composer_ph:"Команда жетістігімен бөлісіңіз...", post_btn:"Жариялау",
     like:"Ұнайды", comment:"Пікір", add_comment:"Пікір қосу...",
     cal_lessons:"Сабақтар", cal_comp:"Жарыстар", add_event:"Қосу",
@@ -172,8 +177,10 @@ const I18N = {
     nav_home:"Home", nav_journey:"Journey", nav_feed:"Feed", nav_cal:"Calendar", nav_profile:"Profile",
     coach_ph:"Ask Coach AI", coach_title:"Coach AI",
     journey:"Champion's Journey", journey_hint:"Complete lessons, earn points and unlock achievements",
+    journey_from_curriculum:"Progress on the school program — sections and lessons from Curriculum",
+    journey_edit_in_crm:"Edit program",
     track_done:"complete", lesson_done:"Lesson done", lesson_complete:"Mark as done",
-    chapter:"Chapter", lessons_n:"lessons",
+    chapter:"Chapter", lessons_n:"lessons", sections_n:"sections",
     feed_title:"Feed", composer_ph:"Share your team's win...", post_btn:"Post",
     like:"Like", comment:"Comment", add_comment:"Add a comment...",
     cal_lessons:"Lessons", cal_comp:"Competitions", add_event:"Add",
@@ -333,7 +340,8 @@ function L(o){ return (o&&typeof o==='object'&&!Array.isArray(o)) ? (o[LANG]||o.
 function i18nText(s){ const x=String(s||'').trim(); return { ru:x, kk:x, en:x }; }
 function journeyStaffBar(){
   return `<div class="journey-staff-bar">
-    <button type="button" class="btn sm" onclick="openSheet('jchapter')">+ ${t('add_section')}</button>
+    <button type="button" class="btn sm" onclick="openSub('crm');setTimeout(function(){try{CJ_CRM.go('curriculum')}catch(e){}},0)">📘 ${t('journey_edit_in_crm')}</button>
+    <button type="button" class="btn sm ghost" onclick="openSheet('jchapter')">+ ${t('add_section')}</button>
   </div>`;
 }
 
@@ -648,6 +656,18 @@ function doLogin(){
   enterExistingAccount();
 }
 function isStaff(){ return S.user && (S.user.role==='teacher'||S.user.role==='admin'); }
+function crmStudentForUser(){
+  const code=S.user&&S.user.studentId;
+  if(!code||!S.crm||!S.crm.students) return null;
+  return S.crm.students.find(s=>s.studentId===code||s.id===code)||null;
+}
+/** Personal Journey progress for student/parent; staff sees catalog (shared done flags). */
+function journeyLessonDone(lesson){
+  if(isStaff()) return !!lesson.done;
+  const st=crmStudentForUser();
+  if(st&&st.journeyProgress&&st.journeyProgress[lesson.id]) return !!st.journeyProgress[lesson.id].done;
+  return !!lesson.done;
+}
 
 /* ---------------- HOME ---------------- */
 function viewHome(){
@@ -727,6 +747,7 @@ function enableFriends(){ S.friendsOn=true; save(); render(); toast(t('enable')+
 
 /* ---------------- JOURNEY ---------------- */
 function viewJourney(){
+  try{ ensureCrm(S); }catch(e){ /* */ }
   const track=S.tracks.find(x=>x.id===TRACK)||S.tracks[0];
   const trackTabs=`<div class="track-tabs">
     ${S.tracks.map(tr=>`<button class="track-tab ${tr.id===TRACK?'on':''} ${tr.locked?'lk':''}" onclick="setTrack('${tr.id}')">${tr.locked?'🔒 ':''}${L(tr.name)}</button>`).join('')}
@@ -765,14 +786,15 @@ function viewJourney(){
       ${track.programs.map(pr=>`<div class="prog-row"><span class="pe">🤖</span><span class="pn">${pr}</span><span class="pt">${t('available')}</span></div>`).join('')}
     </div>`;
   }
-  track.chapters.forEach(c=>c.lessons.forEach(l=>{totalL++; if(l.done)doneL++;}));
+  track.chapters.forEach(c=>c.lessons.forEach(l=>{totalL++; if(journeyLessonDone(l))doneL++;}));
   const pct=totalL?Math.round(doneL/totalL*100):0;
+  const sectionsDone=track.chapters.filter(ch=>ch.lessons.length&&ch.lessons.every(journeyLessonDone)).length;
   const wave=[0,40,62,40,0,-40,-62,-40];
   let unitsHTML='';
   let unitUnlocked=true;
   track.chapters.forEach((ch,ci)=>{
-    const cDone=ch.lessons.filter(l=>l.done).length;
-    const unitDone=cDone===ch.lessons.length;
+    const cDone=ch.lessons.filter(journeyLessonDone).length;
+    const unitDone=ch.lessons.length>0&&cDone===ch.lessons.length;
     const locked=!unitUnlocked;
     unitsHTML+=`<div class="unit-banner ${locked?'lk':''}" style="${locked?'':`background:linear-gradient(135deg,${ch.tint||'var(--purple)'},var(--purple-l))`}">
       <div><div class="lbl">${t('unit_label')} ${ci+1}</div><div class="ttl">${L(ch.title)}</div></div>
@@ -783,18 +805,20 @@ function viewJourney(){
     let prevDone=true;
     ch.lessons.forEach((l,i)=>{
       const off=wave[i%wave.length];
+      const done=journeyLessonDone(l);
       let cls,inner,clickable=false,bub='';
       if(locked){ cls='lk'; inner='🔒'; }
-      else if(l.done){ cls='done'; inner=SVG.check; clickable=true; }
+      else if(done){ cls='done'; inner=SVG.check; clickable=true; }
       else if(prevDone){ cls='cur'; inner='★'; clickable=true; bub=`<div class="startbub">${t('lesson_start')}</div>`; }
       else { cls='lk'; inner='🔒'; }
       const staffBtns=isStaff()&&!track.locked?`<button type="button" class="redit" onclick="event.stopPropagation();openEditJourneyLesson('${track.id}','${ch.id}','${l.id}')" title="${t('edit_lesson')}">✎</button><button type="button" class="rdel" onclick="event.stopPropagation();deleteJourneyLesson('${track.id}','${ch.id}','${l.id}')" title="${t('delete_lesson')}">×</button>`:'';
+      const dateLine=l.date?`<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${l.date}</div>`:(l.min?`<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${fmtDur(l.min)}</div>`:'');
       unitsHTML+=`<div class="rwrap" style="transform:translateX(${off}px)">
         ${bub}${staffBtns}
         <button class="rnode ${cls}" ${clickable?`onclick="openLessonSheet('${track.id}','${ch.id}','${l.id}')"`:''}>${inner}</button>
-        <div class="rtitle ${cls}">${L(l.title)}${l.min?`<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${fmtDur(l.min)}</div>`:''}</div>
+        <div class="rtitle ${cls}">${L(l.title)}${dateLine}</div>
       </div>`;
-      if(!locked) prevDone=l.done;
+      if(!locked) prevDone=done;
     });
     const certState=unitDone?'cert done':'cert lk';
     unitsHTML+=`<div class="rwrap" style="transform:translateX(0px)">
@@ -803,14 +827,17 @@ function viewJourney(){
     </div></div>`;
     unitUnlocked = unitUnlocked && unitDone;
   });
+  const progressHint=!isStaff()&&crmStudentForUser()
+    ? t('journey_from_curriculum')
+    : t('journey_hint');
   return `
   ${trackTabs}
   ${isStaff()&&!track.locked?journeyStaffBar():''}
   <div class="card" style="background:linear-gradient(135deg,var(--purple),var(--purple-l));color:#fff">
     <div style="font-weight:800;font-size:18px">${t('journey')}</div>
-    <div style="font-size:13px;opacity:.9;font-weight:600;margin:4px 0 2px">${t('journey_hint')}</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
-      <span style="font-weight:800;font-size:15px">${doneL}/${totalL} ${t('lessons_n')}</span>
+    <div style="font-size:13px;opacity:.9;font-weight:600;margin:4px 0 2px">${progressHint}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px;flex-wrap:wrap">
+      <span style="font-weight:800;font-size:15px">${sectionsDone}/${track.chapters.length} ${t('sections_n')} · ${doneL}/${totalL} ${t('lessons_n')}</span>
       <span style="font-weight:800">${pct}% ${t('track_done')}</span>
     </div>
     <div class="progress-cap" style="background:rgba(255,255,255,.25)"><i style="width:${pct}%;background:var(--gold)"></i></div>
@@ -822,12 +849,18 @@ function setTrack(id){ TRACK=id; render(); }
 function openTrackFromHome(){ TRACK=(S.user&&S.user.track)||'fund'; nav('journey'); }
 function completeLesson(trackId,chId,lId){
   const tr=S.tracks.find(x=>x.id===trackId); const ch=tr.chapters.find(c=>c.id===chId); const l=ch.lessons.find(x=>x.id===lId);
-  if(l.done) return;
-  l.done=true; addPoints(10);
+  if(journeyLessonDone(l)) return;
+  l.done=true;
+  const st=crmStudentForUser();
+  if(st){
+    st.journeyProgress=st.journeyProgress||{};
+    st.journeyProgress[l.id]={ done:true, at:new Date().toISOString().slice(0,10), sessionId:null };
+  }
+  addPoints(10);
   unlock('lesson1');
   let unitJustDone=false;
-  if(ch.lessons.every(x=>x.done)){ addPoints(50); unlock('chapter'); unitJustDone=true; }
-  if(S.tracks.every(tt=>tt.chapters.every(cc=>cc.lessons.every(ll=>ll.done)))) unlock('allChapters');
+  if(ch.lessons.every(journeyLessonDone)){ addPoints(50); unlock('chapter'); unitJustDone=true; }
+  if(S.tracks.every(tt=>tt.chapters.every(cc=>cc.lessons.every(journeyLessonDone)))) unlock('allChapters');
   checkPointBadges();
   save(); render();
   toast(SVG.coin+' +10 '+t('pts_earned'));
@@ -879,6 +912,28 @@ function journeyRefLesson(){
   const ch=tr&&tr.chapters&&tr.chapters.find(c=>c.id===ref.c);
   return ch&&ch.lessons.find(x=>x.id===ref.l);
 }
+function syncTracksToCurriculum(){
+  try{ ensureCrm(S); }catch(e){ return; }
+  const fund=(S.tracks||[]).find(t=>t.id==='fund');
+  if(!fund) return;
+  const plain=v=>{
+    if(!v) return '';
+    if(typeof v==='object') return v.ru||v.en||v.kk||'';
+    return String(v);
+  };
+  S.crm.curriculumSections=(fund.chapters||[]).map((ch,i)=>({
+    id:ch.id, title:plain(ch.title)||(`Раздел ${i+1}`), order:i+1, icon:ch.icon||'book', tint:ch.tint||'',
+  }));
+  S.crm.curriculum=[];
+  (fund.chapters||[]).forEach(ch=>{
+    (ch.lessons||[]).forEach((l,i)=>{
+      S.crm.curriculum.push({
+        id:l.id, sectionId:ch.id, topic:plain(l.title), date:l.date||'', order:i+1,
+        notes:'', link:l.link||'', min:l.min||30,
+      });
+    });
+  });
+}
 function saveJourneyLessonEdit(){
   const title=val('f_jl_title').trim();
   if(!title){ toast(t('title')); return; }
@@ -887,6 +942,7 @@ function saveJourneyLessonEdit(){
   l.title=i18nText(title);
   l.link=val('f_jl_link').trim();
   l.min=+(val('f_jl_min')||30)||30;
+  syncTracksToCurriculum();
   save(); closeSheet(); render(); toast('✓ '+t('save_changes'));
 }
 function saveJourneyChapterEdit(){
@@ -897,6 +953,7 @@ function saveJourneyChapterEdit(){
   const ch=tr&&tr.chapters&&tr.chapters.find(c=>c.id===ref.c);
   if(!ch){ closeSheet(); return; }
   ch.title=i18nText(title);
+  syncTracksToCurriculum();
   save(); closeSheet(); render(); toast('✓ '+t('save_changes'));
 }
 function saveJourneyChapter(){
@@ -906,6 +963,7 @@ function saveJourneyChapter(){
   if(!track||track.locked) return;
   if(!track.chapters) track.chapters=[];
   track.chapters.push({ id:uid(), title:i18nText(title), icon:'book', lessons:[] });
+  syncTracksToCurriculum();
   save(); closeSheet(); render(); toast('✓ '+t('save'));
 }
 function saveJourneyLesson(){
@@ -922,6 +980,7 @@ function saveJourneyLesson(){
     min:+(val('f_jl_min')||30)||30,
     done:false,
   });
+  syncTracksToCurriculum();
   save(); closeSheet(); render(); toast('✓ '+t('save'));
 }
 function deleteJourneyLesson(trackId,chId,lId){
@@ -931,6 +990,7 @@ function deleteJourneyLesson(trackId,chId,lId){
   if(!l) return;
   if(!confirm(t('delete_lesson_confirm').replace('{name}',L(l.title)))) return;
   ch.lessons=ch.lessons.filter(x=>x.id!==lId);
+  syncTracksToCurriculum();
   save(); render(); toast('✓ '+t('delete'));
 }
 function completeFromSheet(){ const r=LESSON_REF; closeSheet(); if(r) completeLesson(r.t,r.c,r.l); }

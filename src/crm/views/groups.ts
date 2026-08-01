@@ -1,8 +1,93 @@
 // @ts-nocheck
 import { ct } from '../i18n.js';
 import { CrmStore } from '../store.js';
-import { esc, studentName, attendanceRate, paymentStatus, groupNextSession } from '../utils.js';
+import { esc, studentName, attendanceRate, paymentStatus, groupNextSession, fmtDateShort } from '../utils.js';
 import { studentAvatar, payBadge, emptyState, formField, sectionTitle, listToolbar } from './components.js';
+import { ATTENDANCE_ICON } from '../constants.js';
+
+function sessionAttendanceSummary(session) {
+  const records = session.records || [];
+  if (!records.length) return '—';
+  const present = records.filter((r) => r.status === 'present' || r.status === 'late' || r.status === 'makeup').length;
+  return `${present}/${records.length}`;
+}
+
+function renderGroupLessonsTable(groupId, lang) {
+  const sessions = CrmStore.groupSessions(groupId);
+  const byCurriculum = {};
+  sessions.forEach((s) => {
+    if (s.curriculumId) byCurriculum[s.curriculumId] = s;
+  });
+  const linkedIds = new Set(Object.values(byCurriculum).map((s) => s.id));
+  const orphanSessions = sessions.filter((s) => !s.curriculumId || !linkedIds.has(s.id));
+
+  const rowsFromCurriculum = [];
+  CrmStore.curriculumTree().forEach((sec) => {
+    (sec.lessons || []).forEach((lesson) => {
+      const sess = byCurriculum[lesson.id] || null;
+      const topic = lesson.topic || ct('crm_lesson_no_topic');
+      const date = sess?.date || lesson.date;
+      const marks = (sess?.records || []).map((r) => {
+        const st = CrmStore.student(r.studentId);
+        const name = st ? studentName(st) : r.studentId;
+        const icon = ATTENDANCE_ICON[r.status] || '•';
+        return `<span class="crm-lesson-mark" title="${esc(name)}: ${esc(r.status)}">${icon}</span>`;
+      }).join('');
+      const click = sess
+        ? `onclick="CJ_CRM.openSessionDetail('${sess.id}')"`
+        : `onclick="CJ_CRM.openSessionFromCurriculum('${groupId}','${lesson.id}')"`;
+      const att = sess
+        ? `<b>${sessionAttendanceSummary(sess)}</b><div class="crm-lesson-marks">${marks || '—'}</div>`
+        : `<span class="crm-cur-status planned">${ct('crm_cur_planned')}</span>`;
+      rowsFromCurriculum.push(`<tr class="crm-lesson-row" ${click}>
+        <td class="crm-lesson-topic"><span class="crm-cur-sec-tag">${esc(sec.title)}</span><b>${esc(topic)}</b></td>
+        <td class="crm-lesson-date">${date ? esc(fmtDateShort(date, lang)) : '—'}${sess?.time ? ` · ${esc(sess.time)}` : ''}</td>
+        <td class="crm-lesson-att">${att}</td>
+      </tr>`);
+    });
+  });
+
+  const rowsFromSessions = orphanSessions.filter((s) => !s.curriculumId).map((sess) => {
+    const topic = sess.topic || ct('crm_lesson_no_topic');
+    const marks = (sess.records || []).map((r) => {
+      const st = CrmStore.student(r.studentId);
+      const name = st ? studentName(st) : r.studentId;
+      const icon = ATTENDANCE_ICON[r.status] || '•';
+      return `<span class="crm-lesson-mark" title="${esc(name)}: ${esc(r.status)}">${icon}</span>`;
+    }).join('');
+    return `<tr class="crm-lesson-row" onclick="CJ_CRM.openSessionDetail('${sess.id}')">
+      <td class="crm-lesson-topic">${esc(topic)}</td>
+      <td class="crm-lesson-date">${esc(fmtDateShort(sess.date, lang))}${sess.time ? ` · ${esc(sess.time)}` : ''}</td>
+      <td class="crm-lesson-att">
+        <b>${sessionAttendanceSummary(sess)}</b>
+        <div class="crm-lesson-marks">${marks || '—'}</div>
+      </td>
+    </tr>`;
+  });
+
+  const rows = [...rowsFromCurriculum, ...rowsFromSessions].join('');
+  if (!rows) {
+    return `<div class="crm-card">${emptyState('📚', ct('crm_lessons_empty'))}
+      <div class="crm-lessons-empty-actions">
+        <button type="button" class="crm-btn sm primary" onclick="CJ_CRM.go('curriculum')">${ct('crm_cur_add_lesson')}</button>
+      </div>
+    </div>`;
+  }
+
+  return `
+  <div class="crm-card crm-lessons-table-wrap">
+    <table class="crm-lessons-table">
+      <thead>
+        <tr>
+          <th>${ct('crm_lesson_topic')}</th>
+          <th>${ct('crm_lesson_date')}</th>
+          <th>${ct('crm_lesson_attendance')}</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
 
 export function renderGroups(ctx) {
   const groups = CrmStore.groups();
@@ -54,6 +139,7 @@ export function renderGroupDetail(ctx, id) {
   const g = CrmStore.group(id);
   if (!g) return emptyState('❓', '—');
   const students = CrmStore.groupStudents(id);
+  const lang = ctx.lang || 'ru';
 
   const rows = students.length
     ? students.map((s) => `
@@ -77,6 +163,8 @@ export function renderGroupDetail(ctx, id) {
       <button class="crm-btn ghost crm-danger-btn" onclick="CJ_CRM.deleteGroup('${g.id}')">${ct('crm_delete_group')}</button>
     </div>
   </div>
+  ${sectionTitle(ct('crm_group_lessons'))}
+  ${renderGroupLessonsTable(id, lang)}
   ${sectionTitle(ct('crm_group_students'), `<button class="crm-btn sm ghost" onclick="CJ_CRM.openAddToGroup('${g.id}')">+</button>`)}
   <div class="crm-card crm-list">${rows}</div>`;
 }
@@ -125,4 +213,41 @@ export function readGroupForm(existingId) {
     if (g) return { ...g, ...data, schedule: { ...g.schedule, ...data.schedule } };
   }
   return data;
+}
+
+export function sessionDetailHtml(sessionId, lang = 'ru') {
+  const sess = CrmStore.session(sessionId);
+  if (!sess) return `<div class="sheet-h">—</div>`;
+  const g = CrmStore.group(sess.groupId);
+  const topic = sess.topic || ct('crm_lesson_no_topic');
+  const rows = (sess.records || []).map((r) => {
+    const st = CrmStore.student(r.studentId);
+    const name = st ? studentName(st) : r.studentId;
+    const icon = ATTENDANCE_ICON[r.status] || '•';
+    const label = ct('crm_att_' + r.status) || r.status;
+    return `<div class="crm-lesson-detail-row">
+      <span class="crm-lesson-detail-name">${esc(name)}</span>
+      <span class="crm-lesson-detail-status">${icon} ${esc(label)}</span>
+      ${r.comment ? `<span class="crm-lesson-detail-comment">${esc(r.comment)}</span>` : ''}
+    </div>`;
+  }).join('') || `<div class="crm-empty">—</div>`;
+
+  return `
+  <div class="sheet-h">📋 ${ct('crm_lesson_detail')}</div>
+  <div class="crm-form">
+    <div class="crm-field">
+      <label>${ct('crm_lesson_topic')}</label>
+      <input id="crm_sess_edit_topic" type="text" value="${esc(sess.topic || '')}" placeholder="${ct('crm_lesson_topic_ph')}">
+    </div>
+    <div class="crm-field">
+      <label>${ct('crm_lesson_date')}</label>
+      <input id="crm_sess_edit_date" type="date" value="${esc(sess.date || '')}">
+    </div>
+    <p class="crm-modal-hint">${esc(g?.name || '')} · ${esc(fmtDateShort(sess.date, lang))}${sess.time ? ` · ${esc(sess.time)}` : ''} · ${sessionAttendanceSummary(sess)}</p>
+    <div class="crm-lesson-detail-list">${rows}</div>
+    <div class="crm-form-actions">
+      <button type="button" class="btn ghost" onclick="closeSheet()">${ct('crm_cancel')}</button>
+      <button type="button" class="btn primary" onclick="CJ_CRM.saveSessionMeta('${sess.id}')">${ct('crm_save')}</button>
+    </div>
+  </div>`;
 }

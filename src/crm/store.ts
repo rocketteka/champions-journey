@@ -1,7 +1,7 @@
 // @ts-nocheck
 // @ts-nocheck
 import { SUB_LESSONS } from './constants.js';
-import { ensureCrm, emptyStudent, emptyGroup } from './migrate.js';
+import { ensureCrm, emptyStudent, emptyGroup, syncCurriculumTracks } from './migrate.js';
 import {
   uid, todayISO, addDays, attendanceRate, paymentStatus, isFrozen,
   nextPaymentDate, studentName, isBirthdayToday, isGroupToday,
@@ -279,12 +279,172 @@ export const CrmStore = {
     return s.attendance;
   },
 
-  saveSession(groupId, records) {
+  groupSessions(groupId) {
+    return (crm().sessions || [])
+      .filter((s) => s.groupId === groupId)
+      .slice()
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))
+        || String(b.time || '').localeCompare(String(a.time || '')));
+  },
+
+  session(sessionId) {
+    return (crm().sessions || []).find((s) => s.id === sessionId) || null;
+  },
+
+  curriculumSections() {
+    return (crm().curriculumSections || [])
+      .slice()
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+  },
+
+  curriculumSection(id) {
+    return (crm().curriculumSections || []).find((s) => s.id === id) || null;
+  },
+
+  curriculumLesson(id) {
+    return (crm().curriculum || []).find((l) => l.id === id) || null;
+  },
+
+  curriculumLessons(sectionId) {
+    return (crm().curriculum || [])
+      .filter((l) => !sectionId || l.sectionId === sectionId)
+      .slice()
+      .sort((a, b) => (a.order || 0) - (b.order || 0)
+        || String(a.date || '').localeCompare(String(b.date || ''))
+        || String(a.topic || '').localeCompare(String(b.topic || '')));
+  },
+
+  curriculumTree() {
+    return this.curriculumSections().map((sec) => ({
+      ...sec,
+      lessons: this.curriculumLessons(sec.id),
+    }));
+  },
+
+  saveCurriculumSection(data) {
+    const c = crm();
+    if (!c.curriculumSections) c.curriculumSections = [];
+    const i = data.id ? c.curriculumSections.findIndex((s) => s.id === data.id) : -1;
+    const prev = i >= 0 ? c.curriculumSections[i] : null;
+    const section = {
+      id: prev?.id || data.id || uid(),
+      title: String(data.title || '').trim(),
+      order: data.order != null ? +data.order : (prev?.order ?? c.curriculumSections.length + 1),
+      icon: data.icon || prev?.icon || 'book',
+      tint: data.tint || prev?.tint || '',
+    };
+    if (i >= 0) c.curriculumSections[i] = section;
+    else c.curriculumSections.push(section);
+    this.syncCurriculumToJourney();
+    persist();
+    return section;
+  },
+
+  deleteCurriculumSection(id) {
+    const c = crm();
+    const before = (c.curriculumSections || []).length;
+    c.curriculumSections = (c.curriculumSections || []).filter((s) => s.id !== id);
+    c.curriculum = (c.curriculum || []).filter((l) => l.sectionId !== id);
+    if (c.curriculumSections.length !== before) {
+      this.syncCurriculumToJourney();
+      persist();
+    }
+    return before !== c.curriculumSections.length;
+  },
+
+  saveCurriculumLesson(data) {
+    const c = crm();
+    if (!c.curriculum) c.curriculum = [];
+    const i = data.id ? c.curriculum.findIndex((l) => l.id === data.id) : -1;
+    const prev = i >= 0 ? c.curriculum[i] : null;
+    const sectionId = data.sectionId || prev?.sectionId;
+    const lesson = {
+      id: prev?.id || data.id || uid(),
+      sectionId,
+      topic: String(data.topic || '').trim(),
+      date: data.date || '',
+      order: data.order != null
+        ? +data.order
+        : (prev?.order ?? c.curriculum.filter((l) => l.sectionId === sectionId).length + 1),
+      notes: String(data.notes != null ? data.notes : (prev?.notes || '')).trim(),
+      link: data.link != null ? String(data.link).trim() : (prev?.link || ''),
+      min: data.min != null ? +data.min : (prev?.min || 30),
+    };
+    if (i >= 0) c.curriculum[i] = lesson;
+    else c.curriculum.push(lesson);
+    this.syncCurriculumToJourney();
+    persist();
+    return lesson;
+  },
+
+  deleteCurriculumLesson(id) {
+    const c = crm();
+    const before = (c.curriculum || []).length;
+    c.curriculum = (c.curriculum || []).filter((l) => l.id !== id);
+    if (c.curriculum.length !== before) {
+      this.syncCurriculumToJourney();
+      persist();
+    }
+    return before !== c.curriculum.length;
+  },
+
+  /** Mirror CRM curriculum into Journey track so Путь shows the same sections/lessons. */
+  syncCurriculumToJourney() {
+    syncCurriculumTracks(getState());
+  },
+
+  markStudentJourneyLesson(student, lessonId, meta = {}) {
+    if (!student || !lessonId) return;
+    student.journeyProgress = student.journeyProgress || {};
+    student.journeyProgress[lessonId] = {
+      done: true,
+      at: meta.at || todayISO(),
+      sessionId: meta.sessionId || null,
+    };
+  },
+
+  studentJourneyProgress(studentIdCode) {
+    if (!studentIdCode) return {};
+    const st = (crm().students || []).find((s) =>
+      s.studentId === studentIdCode || s.id === studentIdCode);
+    return st?.journeyProgress || {};
+  },
+
+  updateSessionMeta(sessionId, { topic, date }) {
+    const s = this.session(sessionId);
+    if (!s) return null;
+    if (topic != null) s.topic = String(topic).trim();
+    if (date) s.date = date;
+    if (s.curriculumId) {
+      const linked = this.curriculumLesson(s.curriculumId);
+      if (linked) {
+        if (topic != null) linked.topic = s.topic;
+        if (date) linked.date = s.date;
+        this.syncCurriculumToJourney();
+      }
+    }
+    persist();
+    return s;
+  },
+
+  saveSession(groupId, records, meta = {}) {
+    let topic = String(meta.topic || '').trim() || '';
+    let date = meta.date || todayISO();
+    const curriculumId = meta.curriculumId || null;
+    if (curriculumId) {
+      const lesson = this.curriculumLesson(curriculumId);
+      if (lesson) {
+        if (!topic) topic = lesson.topic || '';
+        if (!meta.date && lesson.date) date = lesson.date;
+      }
+    }
     const session = {
       id: uid(),
       groupId,
-      date: todayISO(),
-      time: new Date().toTimeString().slice(0, 5),
+      date,
+      time: meta.time || new Date().toTimeString().slice(0, 5),
+      topic,
+      curriculumId: curriculumId || null,
       records: [],
     };
     records.forEach((rec) => {
@@ -304,8 +464,13 @@ export const CrmStore = {
         s.subscription.lessonsLeft--;
       }
 
+      // Attendance advances personal Journey progress for present students
+      if (curriculumId && (status === 'present' || status === 'late' || status === 'makeup')) {
+        this.markStudentJourneyLesson(s, curriculumId, { at: date, sessionId: session.id });
+      }
+
       const labels = { present: 'Был', absent: 'Отсутствовал', late: 'Опоздал', makeup: 'Отработка', sick: 'Болел' };
-      pushTimeline(s, 'attendance', labels[status] || status, { groupId });
+      pushTimeline(s, 'attendance', labels[status] || status, { groupId, curriculumId });
       if (rec.comment) pushTimeline(s, 'comment', rec.comment);
 
       this.saveStudent(s);

@@ -7,11 +7,19 @@ import { ATTENDANCE, ATTENDANCE_ICON } from './constants.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderStudents, studentFormHtml, readStudentForm } from './views/students.js';
 import { renderStudentCard } from './views/student-card.js';
-import { renderGroups, renderGroupDetail, groupFormHtml, readGroupForm } from './views/groups.js';
-import { renderSession, setSessionStatus, buildSessionRecords, clearSession, getSessionState } from './views/session.js';
+import { renderGroups, renderGroupDetail, groupFormHtml, readGroupForm, sessionDetailHtml } from './views/groups.js';
+import { renderSession, setSessionStatus, buildSessionRecords, clearSession, getSessionState, setSessionCurriculum, setSessionMetaField, prepareSessionFromCurriculum } from './views/session.js';
 import { renderSchedule } from './views/schedule.js';
 import { renderReports } from './views/reports.js';
 import { renderApplications } from './views/applications.js';
+import {
+  renderCurriculum,
+  curriculumSectionFormHtml,
+  curriculumLessonFormHtml,
+  sessionGroupPickHtml,
+  readCurriculumSectionForm,
+  readCurriculumLessonForm,
+} from './views/curriculum.js';
 
 const ctx = {
   tab: 'dashboard',
@@ -24,6 +32,8 @@ const ctx = {
   applications: [],
   applicationsLoading: false,
   applicationsLoaded: false,
+  sessionLessonId: null,
+  cardLayout: (typeof localStorage !== 'undefined' && localStorage.getItem('cj_card_layout')) || 'overview',
   _payBusy: false,
   _saveBusy: false,
 };
@@ -45,6 +55,7 @@ function shell(content) {
     ['applications', '📝', appsLabel],
     ['students', '🧑‍🎓', ct('crm_students')],
     ['groups', '👥', ct('crm_groups')],
+    ['curriculum', '📘', ct('crm_curriculum')],
     ['schedule', '📅', ct('crm_schedule')],
     ['reports', '📊', ct('crm_reports')],
   ];
@@ -72,6 +83,7 @@ function bodyHtml() {
   if (ctx.tab === 'applications') return renderApplications(ctx);
   if (ctx.tab === 'students') return renderStudents(ctx);
   if (ctx.tab === 'groups') return renderGroups(ctx);
+  if (ctx.tab === 'curriculum') return renderCurriculum(ctx);
   if (ctx.tab === 'schedule') return renderSchedule(ctx);
   if (ctx.tab === 'reports') return renderReports(ctx);
   return renderDashboard(ctx);
@@ -112,9 +124,10 @@ window.CJ_CRM = {
   go(tab, id) {
     ctx.tab = tab;
     ctx.detailId = id || null;
-    if (['dashboard', 'applications', 'students', 'groups', 'schedule', 'reports'].includes(tab)) {
+    if (['dashboard', 'applications', 'students', 'groups', 'curriculum', 'schedule', 'reports'].includes(tab)) {
       ctx.detailId = null;
     }
+    ctx.sessionLessonId = null;
     if (tab === 'applications') this.loadApplications();
     else rerender();
   },
@@ -203,6 +216,82 @@ window.CJ_CRM = {
   setReportPeriod(p) {
     ctx.reportPeriod = p;
     rerender();
+  },
+
+  openCurriculumSectionForm(sectionId) {
+    const section = sectionId ? CrmStore.curriculumSection(sectionId) : null;
+    openOverlay(curriculumSectionFormHtml(section));
+  },
+
+  saveCurriculumSectionForm(existingId) {
+    const data = readCurriculumSectionForm(existingId || null);
+    if (!data.title) {
+      window.toast?.(ct('crm_cur_section_title'));
+      return;
+    }
+    CrmStore.saveCurriculumSection(data);
+    closeOverlay();
+    window.toast?.('✓ ' + ct('crm_cur_saved'));
+    rerender();
+  },
+
+  deleteCurriculumSection(id) {
+    if (!CrmStore.curriculumSection(id)) return;
+    if (!confirm(ct('crm_cur_delete_section_confirm'))) return;
+    CrmStore.deleteCurriculumSection(id);
+    window.toast?.('✓ ' + ct('crm_cur_deleted'));
+    rerender();
+  },
+
+  openCurriculumLessonForm(lessonId, sectionId) {
+    const lesson = lessonId ? CrmStore.curriculumLesson(lessonId) : null;
+    openOverlay(curriculumLessonFormHtml(lesson, sectionId));
+  },
+
+  saveCurriculumLessonForm(existingId) {
+    const data = readCurriculumLessonForm(existingId || null);
+    if (!data.sectionId) {
+      window.toast?.(ct('crm_cur_section'));
+      return;
+    }
+    if (!data.topic) {
+      window.toast?.(ct('crm_lesson_topic'));
+      return;
+    }
+    CrmStore.saveCurriculumLesson(data);
+    closeOverlay();
+    window.toast?.('✓ ' + ct('crm_cur_saved'));
+    rerender();
+  },
+
+  deleteCurriculumLesson(id) {
+    if (!CrmStore.curriculumLesson(id)) return;
+    if (!confirm(ct('crm_cur_delete_confirm'))) return;
+    CrmStore.deleteCurriculumLesson(id);
+    window.toast?.('✓ ' + ct('crm_cur_deleted'));
+    rerender();
+  },
+
+  openSessionPickGroup(lessonId) {
+    openOverlay(sessionGroupPickHtml(lessonId));
+  },
+
+  openSessionFromCurriculum(groupId, lessonId) {
+    closeOverlay();
+    clearSession(groupId);
+    prepareSessionFromCurriculum(groupId, lessonId);
+    ctx.sessionLessonId = lessonId || null;
+    ctx.tab = 'session';
+    ctx.detailId = groupId;
+    rerender();
+  },
+
+  pickSessionCurriculum(groupId, curriculumId) {
+    setSessionCurriculum(groupId, curriculumId);
+  },
+
+  setSessionMeta(groupId, field, value) {
+    setSessionMetaField(groupId, field, value);
   },
 
   pickAttendance(studentId, status) {
@@ -401,9 +490,31 @@ window.CJ_CRM = {
   },
 
   saveSession(groupId) {
-    CrmStore.saveSession(groupId, buildSessionRecords(groupId));
+    const st = getSessionState(groupId);
+    const topic = document.getElementById('crm_sess_topic')?.value?.trim() || st.topic || '';
+    const date = document.getElementById('crm_sess_date')?.value || st.date || '';
+    const curriculumId = document.getElementById('crm_sess_curriculum')?.value || st.curriculumId || '';
+    if (!topic) {
+      window.toast?.(ct('crm_lesson_topic'));
+      return;
+    }
+    CrmStore.saveSession(groupId, buildSessionRecords(groupId), { topic, date, curriculumId });
     clearSession(groupId);
+    ctx.sessionLessonId = null;
     window.toast?.('✓ ' + ct('crm_session_saved'));
+    this.go('group', groupId);
+  },
+
+  openSessionDetail(sessionId) {
+    openOverlay(sessionDetailHtml(sessionId, ctx.lang || 'ru'));
+  },
+
+  saveSessionMeta(sessionId) {
+    const topic = document.getElementById('crm_sess_edit_topic')?.value?.trim() || '';
+    const date = document.getElementById('crm_sess_edit_date')?.value || '';
+    CrmStore.updateSessionMeta(sessionId, { topic, date });
+    closeOverlay();
+    window.toast?.('✓ ' + ct('crm_save'));
     rerender();
   },
 
@@ -442,6 +553,22 @@ window.CJ_CRM = {
     if (!confirm(ct('crm_photo_remove_confirm'))) return;
     CrmStore.setStudentPhoto(studentId, null);
     window.toast?.('✓ ' + ct('crm_photo_removed'));
+    rerender();
+  },
+
+  setStudentStartDate(id, date) {
+    const s = CrmStore.student(id);
+    if (!s) return;
+    const next = String(date || '').trim() || new Date().toISOString().slice(0, 10);
+    if (s.startDate === next) return;
+    CrmStore.saveStudent({ ...s, startDate: next });
+    window.toast?.('✓ ' + ct('crm_start_date'));
+    rerender();
+  },
+
+  setCardLayout(layout) {
+    ctx.cardLayout = layout === 'classic' ? 'classic' : 'overview';
+    try { localStorage.setItem('cj_card_layout', ctx.cardLayout); } catch { /* */ }
     rerender();
   },
 

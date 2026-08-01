@@ -247,9 +247,112 @@ function migratePupils(S, groupMap) {
   S.crm.students.forEach((st) => assignStudentToGroup(S.crm, st));
 }
 
+function plainTitle(v) {
+  if (!v) return '';
+  if (typeof v === 'object') return v.ru || v.en || v.kk || '';
+  return String(v);
+}
+
+export function syncCurriculumTracks(S) {
+  if (!S?.crm) return;
+  const sections = (S.crm.curriculumSections || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+  const lessons = S.crm.curriculum || [];
+  if (!Array.isArray(S.tracks)) S.tracks = [];
+  let track = S.tracks.find((t) => t.id === 'fund');
+  if (!track) {
+    track = {
+      id: 'fund',
+      name: { ru: 'Основы', kk: 'Негіздер', en: 'Fundamentals' },
+      color: '#58CC02',
+      chapters: [],
+    };
+    S.tracks.unshift(track);
+  }
+  const prevDone = {};
+  (track.chapters || []).forEach((ch) => {
+    (ch.lessons || []).forEach((l) => { if (l.done) prevDone[l.id] = true; });
+  });
+  track.chapters = sections.map((sec) => ({
+    id: sec.id,
+    title: { ru: sec.title, kk: sec.title, en: sec.title },
+    icon: sec.icon || 'book',
+    tint: sec.tint || undefined,
+    lessons: lessons
+      .filter((l) => l.sectionId === sec.id)
+      .slice()
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map((l) => ({
+        id: l.id,
+        title: { ru: l.topic, kk: l.topic, en: l.topic },
+        link: l.link || '',
+        min: l.min || 30,
+        date: l.date || '',
+        done: !!prevDone[l.id],
+      })),
+  }));
+}
+
+/** Global curriculum (sections → lessons) synced with Journey "Путь". */
+export function ensureCurriculumCatalog(S) {
+  if (!S?.crm) return;
+  const c = S.crm;
+  if (!Array.isArray(c.curriculumSections)) c.curriculumSections = [];
+  if (!Array.isArray(c.curriculum)) c.curriculum = [];
+
+  // Drop legacy group binding; ensure sectionId
+  let changed = false;
+  const legacyGrouped = c.curriculum.some((l) => l.groupId && !l.sectionId);
+  if (legacyGrouped && !c.curriculumSections.length) {
+    c.curriculumSections.push({ id: uid(), title: 'Программа', order: 1 });
+    changed = true;
+  }
+  const fallbackSec = c.curriculumSections[0]?.id || null;
+  c.curriculum.forEach((l, i) => {
+    if (l.groupId) { delete l.groupId; changed = true; }
+    if (!l.sectionId && fallbackSec) { l.sectionId = fallbackSec; changed = true; }
+    if (l.topic == null && l.title) { l.topic = plainTitle(l.title); changed = true; }
+    if (l.order == null) { l.order = i + 1; changed = true; }
+  });
+
+  // Seed from Journey tracks if curriculum is empty
+  if (!c.curriculumSections.length && !c.curriculum.length) {
+    const fund = (S.tracks || []).find((t) => t.id === 'fund') || (S.tracks || [])[0];
+    const chapters = fund?.chapters || [];
+    if (chapters.length) {
+      chapters.forEach((ch, si) => {
+        const secId = ch.id || uid();
+        c.curriculumSections.push({
+          id: secId,
+          title: plainTitle(ch.title) || `Раздел ${si + 1}`,
+          order: si + 1,
+          icon: ch.icon || 'book',
+          tint: ch.tint || '',
+        });
+        (ch.lessons || []).forEach((les, li) => {
+          c.curriculum.push({
+            id: les.id || uid(),
+            sectionId: secId,
+            topic: plainTitle(les.title),
+            date: les.date || '',
+            order: li + 1,
+            notes: '',
+            link: les.link || '',
+            min: les.min || 30,
+          });
+        });
+      });
+      changed = true;
+    }
+  }
+
+  if (changed && !c._curriculumMigrated) {
+    c._curriculumMigrated = true;
+  }
+}
+
 export function ensureCrm(S) {
-  if (!S) return { students: [], groups: [], sessions: [], payments: [] };
-  if (!S.crm) S.crm = { students: [], groups: [], sessions: [], payments: [] };
+  if (!S) return { students: [], groups: [], sessions: [], payments: [], curriculum: [], curriculumSections: [] };
+  if (!S.crm) S.crm = { students: [], groups: [], sessions: [], payments: [], curriculum: [], curriculumSections: [] };
 
   const teacherName = S.user?.name || 'Учитель';
 
@@ -269,6 +372,8 @@ export function ensureCrm(S) {
     if (!S.crm.groups) S.crm.groups = seedCrmGroups(teacherName);
     if (!S.crm.sessions) S.crm.sessions = [];
     if (!S.crm.payments) S.crm.payments = [];
+    if (!S.crm.curriculum) S.crm.curriculum = [];
+    if (!S.crm.curriculumSections) S.crm.curriculumSections = [];
 
     S.crm._migrated = true;
   }
@@ -277,6 +382,11 @@ export function ensureCrm(S) {
   if (!S.crm.groups) S.crm.groups = seedCrmGroups(teacherName);
   if (!S.crm.sessions) S.crm.sessions = [];
   if (!S.crm.payments) S.crm.payments = [];
+  if (!S.crm.curriculum) S.crm.curriculum = [];
+  if (!S.crm.curriculumSections) S.crm.curriculumSections = [];
+
+  ensureCurriculumCatalog(S);
+  syncCurriculumTracks(S);
 
   const fixed = normalizeCrmData(S.crm);
   if (fixed && !S.crm._normalized) {

@@ -1,13 +1,21 @@
 // @ts-nocheck
 import { ct } from '../i18n.js';
 import { CrmStore } from '../store.js';
-import { esc, studentName } from '../utils.js';
+import { esc, studentName, fmtDateShort } from '../utils.js';
 import { studentAvatar, attendancePicker, payBadge } from './components.js';
 
 const sessionState = {};
 
 export function getSessionState(groupId) {
-  if (!sessionState[groupId]) sessionState[groupId] = { records: {}, comments: {} };
+  if (!sessionState[groupId]) {
+    sessionState[groupId] = {
+      records: {},
+      comments: {},
+      curriculumId: '',
+      topic: '',
+      date: new Date().toISOString().slice(0, 10),
+    };
+  }
   return sessionState[groupId];
 }
 
@@ -17,11 +25,54 @@ export function setSessionStatus(groupId, studentId, status) {
   if (typeof window.CJ_CRM !== 'undefined') window.CJ_CRM.rerender();
 }
 
+export function setSessionCurriculum(groupId, curriculumId) {
+  const st = getSessionState(groupId);
+  st.curriculumId = curriculumId || '';
+  if (curriculumId) {
+    const lesson = CrmStore.curriculumLesson(curriculumId);
+    if (lesson) {
+      st.topic = lesson.topic || '';
+      st.date = lesson.date || st.date;
+    }
+  }
+  if (typeof window.CJ_CRM !== 'undefined') window.CJ_CRM.rerender();
+}
+
+export function setSessionMetaField(groupId, field, value) {
+  const st = getSessionState(groupId);
+  st[field] = value;
+}
+
+export function prepareSessionFromCurriculum(groupId, curriculumId) {
+  const st = getSessionState(groupId);
+  st.curriculumId = curriculumId || '';
+  if (curriculumId) {
+    const lesson = CrmStore.curriculumLesson(curriculumId);
+    if (lesson) {
+      st.topic = lesson.topic || '';
+      st.date = lesson.date || st.date;
+    }
+  }
+}
+
 export function renderSession(ctx, groupId) {
   const g = CrmStore.group(groupId);
   if (!g) return '<div class="crm-empty">—</div>';
   const students = CrmStore.groupStudents(groupId);
   const st = getSessionState(groupId);
+  const lang = ctx.lang || 'ru';
+
+  const tree = CrmStore.curriculumTree();
+  const curOpts = [`<option value="">${ct('crm_cur_pick_other')}</option>`];
+  tree.forEach((sec) => {
+    if (!sec.lessons?.length) return;
+    curOpts.push(`<optgroup label="${esc(sec.title)}">`);
+    sec.lessons.forEach((l) => {
+      const label = `${l.date ? fmtDateShort(l.date, lang) + ' — ' : ''}${l.topic || ct('crm_lesson_no_topic')}`;
+      curOpts.push(`<option value="${l.id}" ${st.curriculumId === l.id ? 'selected' : ''}>${esc(label)}</option>`);
+    });
+    curOpts.push('</optgroup>');
+  });
 
   const rows = students.map((s) => {
     const cur = st.records[s.id] || 'present';
@@ -48,11 +99,33 @@ export function renderSession(ctx, groupId) {
     </div>`;
   }).join('');
 
+  const locked = !!st.curriculumId;
+
   return `
   <div class="crm-session-header">
     <div>
       <h2>${esc(g.name)}</h2>
       <p>${ct('crm_session_title')} · ${students.length} уч.</p>
+    </div>
+  </div>
+  <div class="crm-card crm-session-meta crm-session-meta--cur">
+    <div class="crm-field crm-session-cur-pick">
+      <label>${ct('crm_cur_pick')}</label>
+      <select id="crm_sess_curriculum" onchange="CJ_CRM.pickSessionCurriculum('${groupId}', this.value)">
+        ${curOpts.join('')}
+      </select>
+      ${!tree.some((s) => s.lessons?.length) ? `<p class="crm-modal-hint">${ct('crm_cur_pick_empty')}</p>` : ''}
+    </div>
+    <div class="crm-field">
+      <label>${ct('crm_lesson_topic')}</label>
+      <input id="crm_sess_topic" type="text" placeholder="${ct('crm_lesson_topic_ph')}"
+        value="${esc(st.topic || '')}" ${locked ? 'readonly' : ''}
+        oninput="CJ_CRM.setSessionMeta('${groupId}','topic',this.value)">
+    </div>
+    <div class="crm-field">
+      <label>${ct('crm_lesson_date')}</label>
+      <input id="crm_sess_date" type="date" value="${esc(st.date || '')}" ${locked ? 'readonly' : ''}
+        onchange="CJ_CRM.setSessionMeta('${groupId}','date',this.value)">
     </div>
   </div>
   <div class="crm-session-board">
