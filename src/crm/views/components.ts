@@ -51,7 +51,7 @@ export function studentRow(student, onclick) {
         <span class="crm-row-name">${name}</span>
         ${payBadge(student)}
       </div>
-      <div class="crm-row-sub">${esc(student.school || '')}${student.grade ? ' · ' + esc(student.grade) + ' кл.' : ''}</div>
+      <div class="crm-row-sub">${student.studentId ? `<b>ID ${esc(student.studentId)}</b> · ` : ''}${esc(student.school || '')}${student.grade ? ' · ' + esc(student.grade) + ' кл.' : ''}</div>
       <div class="crm-row-meta">
         <span>${ct('crm_lessons_left')}: <b>${left}</b></span>
         <span>${ct('crm_attendance_pct')}: <b>${att}%</b></span>

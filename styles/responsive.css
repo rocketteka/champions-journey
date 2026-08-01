@@ -84,7 +84,19 @@
   .lland-hero { padding: 40px 48px 36px; }
   .lland-hero h1 { font-size: 40px; }
   .lland-sec { padding-left: 40px; padding-right: 40px; }
-  .lland-get .lland-feat { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+  .lland-get {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 28px;
+    row-gap: 2px;
+    align-items: start;
+  }
+  .lland-get h2 { grid-column: 1 / -1; }
+  .lland-get .lland-feat {
+    display: flex;
+    align-items: flex-start;
+    text-align: left;
+  }
   .lland-price { max-width: 520px; }
 
   .login { padding-left: 40px; padding-right: 40px; }

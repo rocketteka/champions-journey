@@ -7,6 +7,12 @@ export interface User {
   level?: 'beginner' | 'advanced';
   track?: string;
   surveyMsg?: string;
+  /** Parent phone (digits); used for phone-based auth. */
+  phone?: string;
+  /** Shared 4-digit code linking parent ↔ student (from teacher CRM). */
+  studentId?: string;
+  linkedParentUid?: string;
+  linkedStudentUid?: string;
 }
 
 export interface LocalizedText {

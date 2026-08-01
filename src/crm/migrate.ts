@@ -294,6 +294,7 @@ export function emptyStudent() {
     lastName: '',
     parentName: '',
     parentPhone: '',
+    studentId: '',
     school: '',
     grade: '',
     city: 'Астана',

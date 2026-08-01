@@ -34,6 +34,7 @@ const pages = [
   ['index.html', "Champion's Journey", '/src/pages/landing.ts'],
   ['pages/login.html', 'Вход', '/src/pages/login.ts'],
   ['pages/auth.html', 'Аккаунт', '/src/pages/auth.ts'],
+  ['pages/apply.html', 'Заявка', '/src/pages/apply.ts'],
   ['app/home.html', 'Главная', '/src/pages/app/home.ts'],
   ['app/journey.html', 'Путь', '/src/pages/app/journey.ts'],
   ['app/feed.html', 'Лента', '/src/pages/app/feed.ts'],

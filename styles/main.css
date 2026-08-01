@@ -461,10 +461,12 @@ html[data-theme="dark"] .modal-card{box-shadow:0 24px 64px rgba(0,0,0,.5)}
 .lland-table td:first-child{width:42px;font-weight:800;color:var(--purple);text-align:center}
 .lland-table td:nth-child(2){font-weight:800;color:var(--ink);line-height:1.3}
 .lland-table td:last-child{width:72px;font-weight:800;color:var(--muted);text-align:center;white-space:nowrap}
-.lland-get{background:var(--bg)}
+.lland-get{background:var(--bg);text-align:left}
+.lland-get h2{text-align:left}
 .lland-req{background:var(--bg)}
-.lland-feat{display:flex;align-items:center;gap:12px;padding:9px 0;font-weight:700;font-size:14.5px;line-height:1.35}
-.lland-feat .fe{font-size:20px;width:28px;text-align:center;flex:none}
+.lland-feat{display:flex;align-items:flex-start;gap:12px;padding:9px 0;font-weight:700;font-size:clamp(13px,3.6vw,15px);line-height:1.4;text-align:left}
+.lland-feat .fe{font-size:20px;width:28px;text-align:center;flex:none;line-height:1.35;margin-top:1px}
+.lland-feat > span:not(.fe){flex:1;min-width:0;text-align:left;overflow-wrap:anywhere;word-break:break-word;hyphens:auto}
 .lland-price{display:flex;align-items:center;justify-content:space-between;background:#fff;border:2px solid var(--line);border-bottom:3px solid #D5D5D5;border-radius:16px;padding:14px 16px;margin-bottom:10px}
 .lland-price.feat{border-color:var(--purple);border-bottom-color:var(--purple-d)}
 .lland-price .pn{font-weight:800;font-size:15px}

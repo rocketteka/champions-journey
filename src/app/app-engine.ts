@@ -2,6 +2,15 @@
 /* Auto-generated from legacy monolith — typed incrementally */
 import { goTo, routeUrl } from '@/core/nav';
 import { initFirebase, getCloud } from '@/core/firebase';
+import {
+  isValidPhone,
+  isValidStudentId,
+  normalizePhone,
+  parentAuthEmail,
+  parentAuthPassword,
+  studentAuthEmail,
+  studentAuthPassword,
+} from '@/core/auth-ids';
 import '@/crm/register';
 
 declare global {
@@ -99,7 +108,7 @@ const I18N = {
     like:"Нравится", comment:"Комментировать", add_comment:"Добавить комментарий...",
     cal_lessons:"Занятия", cal_comp:"Соревнования", add_event:"Добавить",
     crm:"CRM", crm_total:"Всего", crm_paid:"Оплачено", crm_due:"Долг",
-    add_pupil:"Добавить платёж", paid:"Оплачено", due:"Не оплачено", mark_paid:"Отметить оплату", crm_collected:"Собрано", crm_thismonth:"В этом месяце", crm_paid_of:"оплатили", crm_parents:"Родители", crm_payments:"Платежи", crm_child:"Ребёнок", crm_awaiting:"Ожидает оплаты", crm_undo:"Отменить оплату", crm_parent_name:"Имя родителя", crm_child_name:"Имя ребёнка", to_promo:"занятий до повышения", pts_history:"История очков", character:"Персонаж", tab_profile:"Профиль", tab_posts:"Публикации", no_sub:"У вас нет абонемента", assessment:"Оценка", assess_empty:"Проходите занятия, чтобы увидеть оценку", assess_overall:"Готовность робота", assess_book:"Обновить оценку", asx_mech:"Механика и сборка", asx_prog:"Программирование", asx_prob:"Решение задач", asx_comp:"Готовность к соревнованиям", asx_team:"Командная работа", edit:"Изменить", delete:"Удалить", edit_payment:"Изменить платёж", save_changes:"Сохранить", my_robot:"Мой робот", city:"Робо-город Астана", no_posts:"Пока нет публикаций", del_confirm:"Удалить запись?", students:"Ученики", crm_attended:"Посещено", crm_missed:"Пропущено", crm_covered:"Пройдено", crm_att_rate:"Посещаемость", crm_report_since:"Отчёт с 28 июня", crm_journal:"Журнал учеников", school:"Школа", course:"Направление", survey_title:"Определим твой уровень", survey_sub:"3 коротких вопроса", survey_q1:"Собирал ли ты робота раньше?", survey_q2:"Программировал моторы и датчики?", survey_q3:"Участвовал в соревнованиях (FLL/FTC/WRO)?", sv_yes:"Да", sv_no:"Нет", your_level:"Твой уровень", lvl_beginner:"Новичок", lvl_advanced:"Продвинутый", lvl_res_beg:"Начни с трека «Основы» — построим фундамент!", lvl_res_adv:"Ты знаешь основы! Открыт олимпиадный трек 🏆", recommend:"Рекомендуем", open_track:"Открыть трек", olymp_intro:"Олимпиадные программы открыты. Выбери направление:", available:"Доступно", auth_signin:"Войти", auth_signup:"Регистрация", auth_email:"Эл. почта", auth_pass:"Пароль", auth_to_signup:"Нет аккаунта? Регистрация", auth_to_signin:"Уже есть аккаунт? Войти", auth_fill:"Введите почту и пароль", auth_save_title:"Сохрани результат", auth_save_hint:"Создай аккаунт, чтобы сохранить прогресс", auth_register_title:"Регистрация", auth_register_sub:"Создайте аккаунт и начните обучение", auth_pass_confirm:"Подтвердите пароль", auth_pass_mismatch:"Пароли не совпадают", auth_name_required:"Введите имя", auth_pass_short:"Пароль — минимум 6 символов",
+    add_pupil:"Добавить платёж", paid:"Оплачено", due:"Не оплачено", mark_paid:"Отметить оплату", crm_collected:"Собрано", crm_thismonth:"В этом месяце", crm_paid_of:"оплатили", crm_parents:"Родители", crm_payments:"Платежи", crm_child:"Ребёнок", crm_awaiting:"Ожидает оплаты", crm_undo:"Отменить оплату", crm_parent_name:"Имя родителя", crm_child_name:"Имя ребёнка", to_promo:"занятий до повышения", pts_history:"История очков", character:"Персонаж", tab_profile:"Профиль", tab_posts:"Публикации", no_sub:"У вас нет абонемента", assessment:"Оценка", assess_empty:"Проходите занятия, чтобы увидеть оценку", assess_overall:"Готовность робота", assess_book:"Обновить оценку", asx_mech:"Механика и сборка", asx_prog:"Программирование", asx_prob:"Решение задач", asx_comp:"Готовность к соревнованиям", asx_team:"Командная работа", edit:"Изменить", delete:"Удалить", edit_payment:"Изменить платёж", save_changes:"Сохранить", my_robot:"Мой робот", city:"Робо-город Астана", no_posts:"Пока нет публикаций", del_confirm:"Удалить запись?", students:"Ученики", crm_attended:"Посещено", crm_missed:"Пропущено", crm_covered:"Пройдено", crm_att_rate:"Посещаемость", crm_report_since:"Отчёт с 28 июня", crm_journal:"Журнал учеников", school:"Школа", course:"Направление", survey_title:"Определим твой уровень", survey_sub:"3 коротких вопроса", survey_q1:"Собирал ли ты робота раньше?", survey_q2:"Программировал моторы и датчики?", survey_q3:"Участвовал в соревнованиях (FLL/FTC/WRO)?", sv_yes:"Да", sv_no:"Нет", your_level:"Твой уровень", lvl_beginner:"Новичок", lvl_advanced:"Продвинутый", lvl_res_beg:"Начни с трека «Основы» — построим фундамент!", lvl_res_adv:"Ты знаешь основы! Открыт олимпиадный трек 🏆", recommend:"Рекомендуем", open_track:"Открыть трек", olymp_intro:"Олимпиадные программы открыты. Выбери направление:", available:"Доступно", auth_signin:"Войти", auth_signup:"Регистрация", auth_email:"Эл. почта", auth_pass:"Пароль", auth_to_signup:"Нет аккаунта? Регистрация", auth_to_signin:"Уже есть аккаунт? Войти", auth_fill:"Заполните все поля", auth_phone:"Телефон", auth_student_id:"Student ID (4 цифры)", auth_phone_short:"Введите телефон (минимум 10 цифр)", auth_id_invalid:"Student ID — 4 цифры", auth_link_missing:"Student ID не найден. Сначала учитель добавляет ученика в CRM", auth_link_taken:"Этот Student ID уже привязан", auth_save_title:"Сохрани результат", auth_save_hint:"Создай аккаунт, чтобы сохранить прогресс", auth_register_title:"Регистрация", auth_register_sub:"Создайте аккаунт и начните обучение", auth_pass_confirm:"Подтвердите пароль", auth_pass_mismatch:"Пароли не совпадают", auth_name_required:"Введите имя", auth_name_from_id:"Имя подставится по Student ID", auth_pass_short:"Пароль — минимум 6 символов", auth_parent_hint:"Имя, телефон и Student ID ребёнка (выдаёт учитель)", auth_student_hint:"Имя и Student ID (выдаёт учитель)", auth_signin_only:"Вход только для существующих аккаунтов. Аккаунты создаёт учитель.", auth_to_apply:"Хотите учиться? Оставьте заявку", apply_title:"Заявка на обучение", apply_sub:"Заполните анкету — учитель свяжется с вами и создаст аккаунты", apply_student_block:"Ученик", apply_student_name:"Имя ученика", apply_student_age:"Возраст", apply_track:"Направление (Intro, FLL, FTC…)", apply_parent_block:"Родитель", apply_parent_name:"Имя родителя", apply_parent_phone:"Телефон родителя", apply_city:"Город", apply_note:"Комментарий (необязательно)", apply_submit:"Отправить заявку", apply_sending:"Отправка…", apply_thanks_title:"Заявка отправлена!", apply_thanks_sub:"Мы получили вашу анкету. Учитель свяжется с вами.", apply_need_firebase:"Нет связи с сервером. Попробуйте позже.", apply_error:"Не удалось отправить заявку",
     materials:"Материалы", add_material:"Загрузить материал", upload:"Загрузить файл", download:"Скачать",
     achievements:"Достижения", locked:"Закрыто", track_locked:"Этот трек скоро откроется", track_locked_hint:"Доступно по подписке школы", upgrade:"Оформить подписку", unit_label:"РАЗДЕЛ", lesson_start:"СТАРТ", unit_locked:"Завершите предыдущий раздел", add_section:"Добавить раздел", edit_section:"Изменить раздел", add_lesson:"Добавить урок", edit_lesson:"Изменить урок", delete_lesson:"Удалить урок", delete_lesson_confirm:"Удалить урок «{name}»?", lesson_link:"Ссылка на урок", lesson_duration:"Длительность (мин)", certificate:"Сертификат", cert_title:"Сертификат о прохождении", cert_unit_done:"Раздел пройден!", cert_for:"подтверждает, что", cert_completed:"успешно завершил(а) раздел", cert_download:"Скачать сертификат", cert_get:"Получить сертификат", cert_points:"баллов набрано", land_desc:"Наша платформа — это не просто LMS. Это скорее сочетание Coursera + Duolingo + Brilliant + Codecademy + Notion + AI-наставника, а не типичный онлайн-курс.", brand_tag:"FIRST · WRO · STEM Projects · Drones · AI · Robotics", land_cta:"Начать обучение", land_login:"У меня уже есть аккаунт", land_back:"Назад", land_program:"Программа обучения", land_th_sec:"№", land_th_name:"Раздел", land_th_lessons:"Уроков", land_get:"Что вы получите", land_pricing:"Тарифы", f_road:"Геймификация обучения в стиле Duolingo", f_pts:"+10 баллов за каждое выполненное задание", f_cert:"Сертификат за каждый пройденный раздел", f_lang:"3 языка: Русский, Қазақша, English", f_cal:"Календарь соревнований по робототехнике", f_crm:"CRM для учителей и руководителей", f_paths:"Структурированные траектории обучения", f_progress:"Отслеживание прогресса и дорожные карты", f_goals:"Обучение, ориентированное на цели", land_req:"Что требуется для обучения?", land_req_1:"Ноутбук или планшет", land_req_2:"Lego Spike Prime", land_req_3:"Интернет-соединение", land_final_t:"Готовы начать путь чемпиона?", land_final_s:"Доступ открывается сразу. Начните обучение.", land_footer:"Сделано в Казахстане 🇰🇿", land_more_tracks:"и ещё", open_lesson:"Открыть урок (Canva)", 
     subs:"Подписки", choose:"Выбрать план", current:"Текущий план", recommended:"Рекомендуем",
@@ -134,7 +143,7 @@ const I18N = {
     like:"Ұнайды", comment:"Пікір", add_comment:"Пікір қосу...",
     cal_lessons:"Сабақтар", cal_comp:"Жарыстар", add_event:"Қосу",
     crm:"CRM", crm_total:"Барлығы", crm_paid:"Төленді", crm_due:"Қарыз",
-    add_pupil:"Төлем қосу", paid:"Төленді", due:"Төленбеген", mark_paid:"Төлемді белгілеу", crm_collected:"Жиналды", crm_thismonth:"Осы айда", crm_paid_of:"төледі", crm_parents:"Ата-аналар", crm_payments:"Төлемдер", crm_child:"Бала", crm_awaiting:"Төлем күтілуде", crm_undo:"Болдырмау", crm_parent_name:"Ата-ана аты", crm_child_name:"Бала аты", to_promo:"сабақ келесі деңгейге", pts_history:"Ұпай тарихы", character:"Кейіпкер", tab_profile:"Профиль", tab_posts:"Жарияланымдар", no_sub:"Сізде абонемент жоқ", assessment:"Бағалау", assess_empty:"Бағалауды көру үшін сабақтардан өтіңіз", assess_overall:"Робот дайындығы", assess_book:"Бағалауды жаңарту", asx_mech:"Механика және құрастыру", asx_prog:"Бағдарламалау", asx_prob:"Есеп шығару", asx_comp:"Жарысқа дайындық", asx_team:"Командалық жұмыс", edit:"Өзгерту", delete:"Жою", edit_payment:"Төлемді өзгерту", save_changes:"Сақтау", my_robot:"Менің роботым", city:"Робо-қала Астана", no_posts:"Әзірге жарияланым жоқ", del_confirm:"Жазбаны жою?", students:"Оқушылар", crm_attended:"Қатысты", crm_missed:"Жіберді", crm_covered:"Өтілді", crm_att_rate:"Қатысу", crm_report_since:"Есеп 28 маусымнан", crm_journal:"Оқушылар журналы", school:"Мектеп", course:"Бағыт", survey_title:"Деңгейіңді анықтайық", survey_sub:"3 қысқа сұрақ", survey_q1:"Бұрын робот құрастырдың ба?", survey_q2:"Моторлар мен сенсорларды бағдарламаладың ба?", survey_q3:"Жарыстарға қатыстың ба (FLL/FTC/WRO)?", sv_yes:"Иә", sv_no:"Жоқ", your_level:"Сенің деңгейің", lvl_beginner:"Жаңадан", lvl_advanced:"Озық", lvl_res_beg:"«Негіздер» трегінен баста — іргетас қалаймыз!", lvl_res_adv:"Негіздерді білесің! Олимпиадалық трек ашылды 🏆", recommend:"Ұсынамыз", open_track:"Тректі ашу", olymp_intro:"Олимпиадалық бағдарламалар ашық. Бағытты таңда:", available:"Қолжетімді", auth_signin:"Кіру", auth_signup:"Тіркелу", auth_email:"Эл. пошта", auth_pass:"Құпиясөз", auth_to_signup:"Аккаунт жоқ па? Тіркелу", auth_to_signin:"Аккаунт бар ма? Кіру", auth_fill:"Пошта мен құпиясөзді енгізіңіз", auth_save_title:"Нәтижені сақта", auth_save_hint:"Прогресті сақтау үшін аккаунт жаса", auth_register_title:"Тіркелу", auth_register_sub:"Аккаунт құрып, оқуды бастаңыз", auth_pass_confirm:"Құпия сөзді растаңыз", auth_pass_mismatch:"Құпия сөздер сәйкес емес", auth_name_required:"Атыңызды енгізіңіз", auth_pass_short:"Құпия сөз кемінде 6 таңба",
+    add_pupil:"Төлем қосу", paid:"Төленді", due:"Төленбеген", mark_paid:"Төлемді белгілеу", crm_collected:"Жиналды", crm_thismonth:"Осы айда", crm_paid_of:"төледі", crm_parents:"Ата-аналар", crm_payments:"Төлемдер", crm_child:"Бала", crm_awaiting:"Төлем күтілуде", crm_undo:"Болдырмау", crm_parent_name:"Ата-ана аты", crm_child_name:"Бала аты", to_promo:"сабақ келесі деңгейге", pts_history:"Ұпай тарихы", character:"Кейіпкер", tab_profile:"Профиль", tab_posts:"Жарияланымдар", no_sub:"Сізде абонемент жоқ", assessment:"Бағалау", assess_empty:"Бағалауды көру үшін сабақтардан өтіңіз", assess_overall:"Робот дайындығы", assess_book:"Бағалауды жаңарту", asx_mech:"Механика және құрастыру", asx_prog:"Бағдарламалау", asx_prob:"Есеп шығару", asx_comp:"Жарысқа дайындық", asx_team:"Командалық жұмыс", edit:"Өзгерту", delete:"Жою", edit_payment:"Төлемді өзгерту", save_changes:"Сақтау", my_robot:"Менің роботым", city:"Робо-қала Астана", no_posts:"Әзірге жарияланым жоқ", del_confirm:"Жазбаны жою?", students:"Оқушылар", crm_attended:"Қатысты", crm_missed:"Жіберді", crm_covered:"Өтілді", crm_att_rate:"Қатысу", crm_report_since:"Есеп 28 маусымнан", crm_journal:"Оқушылар журналы", school:"Мектеп", course:"Бағыт", survey_title:"Деңгейіңді анықтайық", survey_sub:"3 қысқа сұрақ", survey_q1:"Бұрын робот құрастырдың ба?", survey_q2:"Моторлар мен сенсорларды бағдарламаладың ба?", survey_q3:"Жарыстарға қатыстың ба (FLL/FTC/WRO)?", sv_yes:"Иә", sv_no:"Жоқ", your_level:"Сенің деңгейің", lvl_beginner:"Жаңадан", lvl_advanced:"Озық", lvl_res_beg:"«Негіздер» трегінен баста — іргетас қалаймыз!", lvl_res_adv:"Негіздерді білесің! Олимпиадалық трек ашылды 🏆", recommend:"Ұсынамыз", open_track:"Тректі ашу", olymp_intro:"Олимпиадалық бағдарламалар ашық. Бағытты таңда:", available:"Қолжетімді", auth_signin:"Кіру", auth_signup:"Тіркелу", auth_email:"Эл. пошта", auth_pass:"Құпиясөз", auth_to_signup:"Аккаунт жоқ па? Тіркелу", auth_to_signin:"Аккаунт бар ма? Кіру", auth_fill:"Барлық өрістерді толтырыңыз", auth_phone:"Телефон", auth_student_id:"Student ID (4 цифр)", auth_phone_short:"Телефон енгізіңіз (кемінде 10 цифр)", auth_id_invalid:"Student ID — 4 цифр", auth_link_missing:"Student ID табылмады. Алдымен мұғалім CRM-ге оқушыны қосады", auth_link_taken:"Бұл Student ID әлдеқашан байланыстырылған", auth_save_title:"Нәтижені сақта", auth_save_hint:"Прогресті сақтау үшін аккаунт жаса", auth_register_title:"Тіркелу", auth_register_sub:"Аккаунт құрып, оқуды бастаңыз", auth_pass_confirm:"Құпия сөзді растаңыз", auth_pass_mismatch:"Құпия сөздер сәйкес емес", auth_name_required:"Атыңызды енгізіңіз", auth_name_from_id:"Аты Student ID бойынша қойылады", auth_pass_short:"Құпия сөз кемінде 6 таңба", auth_parent_hint:"Аты, телефон және баланың Student ID (мұғалім береді)", auth_student_hint:"Аты және Student ID (мұғалім береді)", auth_signin_only:"Тек бар аккаунттарға кіру. Аккаунтты мұғалім жасайды.", auth_to_apply:"Оқығыңыз келе ме? Өтінім қалдырыңыз", apply_title:"Оқуға өтінім", apply_sub:"Анкетаны толтырыңыз — мұғалім хабарласып, аккаунт жасайды", apply_student_block:"Оқушы", apply_student_name:"Оқушы аты", apply_student_age:"Жасы", apply_track:"Бағыт (Intro, FLL, FTC…)", apply_parent_block:"Ата-ана", apply_parent_name:"Ата-ана аты", apply_parent_phone:"Ата-ана телефоны", apply_city:"Қала", apply_note:"Пікір (міндетті емес)", apply_submit:"Өтінім жіберу", apply_sending:"Жіберілуде…", apply_thanks_title:"Өтінім жіберілді!", apply_thanks_sub:"Анкетаңызды алдық. Мұғалім хабарласады.", apply_need_firebase:"Серверге қосылу жоқ. Кейінірек көріңіз.", apply_error:"Өтінім жіберілмеді",
     materials:"Материалдар", add_material:"Материал жүктеу", upload:"Файл жүктеу", download:"Жүктеп алу",
     achievements:"Жетістіктер", locked:"Жабық", track_locked:"Бұл трек жақында ашылады", track_locked_hint:"Мектеп жазылымымен қолжетімді", upgrade:"Жазылым рәсімдеу", unit_label:"БӨЛІМ", lesson_start:"БАСТАУ", unit_locked:"Алдыңғы бөлімді аяқтаңыз", add_section:"Бөлім қосу", edit_section:"Бөлімді өзгерту", add_lesson:"Сабақ қосу", edit_lesson:"Сабақты өзгерту", delete_lesson:"Сабақты жою", delete_lesson_confirm:"«{name}» сабағын жою керек пе?", lesson_link:"Сабақ сілтемесі", lesson_duration:"Ұзақтығы (мин)", certificate:"Сертификат", cert_title:"Аяқтағаны туралы сертификат", cert_unit_done:"Бөлім аяқталды!", cert_for:"растайды:", cert_completed:"бөлімді сәтті аяқтады", cert_download:"Сертификатты жүктеу", cert_get:"Сертификат алу", cert_points:"ұпай жиналды", land_desc:"Біздің платформа — жай LMS емес. Бұл Coursera + Duolingo + Brilliant + Codecademy + Notion + AI-теңгеөздің үйлесіміне жақын, әдеттегі онлайн-курстан емес.", brand_tag:"FIRST · WRO · STEM Projects · Drones · AI · Robotics", land_cta:"Оқуды бастау", land_login:"Менде аккаунт бар", land_back:"Артқа", land_program:"Оқу бағдарламасы", land_th_sec:"№", land_th_name:"Бөлім", land_th_lessons:"Сабақ", land_get:"Сіз не аласыз", land_pricing:"Тарифтер", f_road:"Duolingo стиліндегі оқыту геймификациясы", f_pts:"Әр орындалған тапсырмаға +10 ұпай", f_cert:"Әр аяқталған бөлімге сертификат", f_lang:"3 тіл: Русский, Қазақша, English", f_cal:"Робототехника бойынша жарыстар күнтізбесі", f_crm:"Мұғалімдер мен басшыларға арналған CRM", f_paths:"Құрылымдалған оқу траекториялары", f_progress:"Прогресс бақылауы және жол карталары", f_goals:"Мақсатқа бағытталған оқу", land_req:"Оқу үшін не қажет?", land_req_1:"Ноутбук немесе планшет", land_req_2:"Lego Spike Prime", land_req_3:"Интернет байланысы", land_final_t:"Чемпион жолын бастауға дайынсыз ба?", land_final_s:"Қолжетімділік бірден ашылады. Оқуды бастаңыз.", land_footer:"Қазақстанда жасалған 🇰🇿", land_more_tracks:"тағы", open_lesson:"Сабақты ашу (Canva)", 
     subs:"Жазылымдар", choose:"Жоспарды таңдау", current:"Ағымдағы жоспар", recommended:"Ұсынылады",
@@ -169,7 +178,7 @@ const I18N = {
     like:"Like", comment:"Comment", add_comment:"Add a comment...",
     cal_lessons:"Lessons", cal_comp:"Competitions", add_event:"Add",
     crm:"CRM", crm_total:"Total", crm_paid:"Paid", crm_due:"Due",
-    add_pupil:"Add payment", paid:"Paid", due:"Unpaid", mark_paid:"Mark paid", crm_collected:"Collected", crm_thismonth:"This month", crm_paid_of:"have paid", crm_parents:"Parents", crm_payments:"Payments", crm_child:"Child", crm_awaiting:"Awaiting payment", crm_undo:"Mark unpaid", crm_parent_name:"Parent name", crm_child_name:"Child name", to_promo:"lessons to level up", pts_history:"Points history", character:"Character", tab_profile:"Profile", tab_posts:"Posts", no_sub:"No subscription yet", assessment:"Assessment", assess_empty:"Complete lessons to see your assessment", assess_overall:"Robot readiness", assess_book:"Refresh assessment", asx_mech:"Mechanics & building", asx_prog:"Programming", asx_prob:"Problem solving", asx_comp:"Competition readiness", asx_team:"Teamwork", edit:"Edit", delete:"Delete", edit_payment:"Edit payment", save_changes:"Save changes", my_robot:"My robot", city:"Robo-City Astana", no_posts:"No posts yet", del_confirm:"Delete this record?", students:"Students", crm_attended:"Attended", crm_missed:"Missed", crm_covered:"Covered", crm_att_rate:"Attendance", crm_report_since:"Report since Jun 28", crm_journal:"Student journal", school:"School", course:"Track", survey_title:"Let&apos;s find your level", survey_sub:"3 quick questions", survey_q1:"Have you built a robot before?", survey_q2:"Programmed motors and sensors?", survey_q3:"Competed (FLL/FTC/WRO)?", sv_yes:"Yes", sv_no:"No", your_level:"Your level", lvl_beginner:"Beginner", lvl_advanced:"Advanced", lvl_res_beg:"Start with Fundamentals — let&apos;s build the base!", lvl_res_adv:"You know the basics! Olympiad track unlocked 🏆", recommend:"Recommended", open_track:"Open track", olymp_intro:"Olympiad programs unlocked. Pick a track:", available:"Available", auth_signin:"Sign in", auth_signup:"Sign up", auth_email:"Email", auth_pass:"Password", auth_to_signup:"No account? Sign up", auth_to_signin:"Have an account? Sign in", auth_fill:"Enter email and password", auth_save_title:"Save your result", auth_save_hint:"Create an account to save your progress", auth_register_title:"Sign up", auth_register_sub:"Create an account and start learning", auth_pass_confirm:"Confirm password", auth_pass_mismatch:"Passwords do not match", auth_name_required:"Enter your name", auth_pass_short:"Password must be at least 6 characters",
+    add_pupil:"Add payment", paid:"Paid", due:"Unpaid", mark_paid:"Mark paid", crm_collected:"Collected", crm_thismonth:"This month", crm_paid_of:"have paid", crm_parents:"Parents", crm_payments:"Payments", crm_child:"Child", crm_awaiting:"Awaiting payment", crm_undo:"Mark unpaid", crm_parent_name:"Parent name", crm_child_name:"Child name", to_promo:"lessons to level up", pts_history:"Points history", character:"Character", tab_profile:"Profile", tab_posts:"Posts", no_sub:"No subscription yet", assessment:"Assessment", assess_empty:"Complete lessons to see your assessment", assess_overall:"Robot readiness", assess_book:"Refresh assessment", asx_mech:"Mechanics & building", asx_prog:"Programming", asx_prob:"Problem solving", asx_comp:"Competition readiness", asx_team:"Teamwork", edit:"Edit", delete:"Delete", edit_payment:"Edit payment", save_changes:"Save changes", my_robot:"My robot", city:"Robo-City Astana", no_posts:"No posts yet", del_confirm:"Delete this record?", students:"Students", crm_attended:"Attended", crm_missed:"Missed", crm_covered:"Covered", crm_att_rate:"Attendance", crm_report_since:"Report since Jun 28", crm_journal:"Student journal", school:"School", course:"Track", survey_title:"Let&apos;s find your level", survey_sub:"3 quick questions", survey_q1:"Have you built a robot before?", survey_q2:"Programmed motors and sensors?", survey_q3:"Competed (FLL/FTC/WRO)?", sv_yes:"Yes", sv_no:"No", your_level:"Your level", lvl_beginner:"Beginner", lvl_advanced:"Advanced", lvl_res_beg:"Start with Fundamentals — let&apos;s build the base!", lvl_res_adv:"You know the basics! Olympiad track unlocked 🏆", recommend:"Recommended", open_track:"Open track", olymp_intro:"Olympiad programs unlocked. Pick a track:", available:"Available", auth_signin:"Sign in", auth_signup:"Sign up", auth_email:"Email", auth_pass:"Password", auth_to_signup:"No account? Sign up", auth_to_signin:"Have an account? Sign in", auth_fill:"Fill in all fields", auth_phone:"Phone", auth_student_id:"Student ID (4 digits)", auth_phone_short:"Enter phone (at least 10 digits)", auth_id_invalid:"Student ID must be 4 digits", auth_link_missing:"Student ID not found. Teacher must add the student in CRM first", auth_link_taken:"This Student ID is already linked", auth_save_title:"Save your result", auth_save_hint:"Create an account to save your progress", auth_register_title:"Sign up", auth_register_sub:"Create an account and start learning", auth_pass_confirm:"Confirm password", auth_pass_mismatch:"Passwords do not match", auth_name_required:"Enter your name", auth_name_from_id:"Name will fill from Student ID", auth_pass_short:"Password must be at least 6 characters", auth_parent_hint:"Name, phone, and child Student ID (from teacher)", auth_student_hint:"Name and Student ID (from teacher)", auth_signin_only:"Sign-in only for existing accounts. Teachers create accounts.", auth_to_apply:"Want to learn? Submit an application", apply_title:"Enrollment application", apply_sub:"Fill in the form — a teacher will contact you and create accounts", apply_student_block:"Student", apply_student_name:"Student name", apply_student_age:"Age", apply_track:"Track (Intro, FLL, FTC…)", apply_parent_block:"Parent", apply_parent_name:"Parent name", apply_parent_phone:"Parent phone", apply_city:"City", apply_note:"Comment (optional)", apply_submit:"Submit application", apply_sending:"Sending…", apply_thanks_title:"Application sent!", apply_thanks_sub:"We received your form. A teacher will contact you.", apply_need_firebase:"No server connection. Try again later.", apply_error:"Could not send application",
     materials:"Materials", add_material:"Upload material", upload:"Upload file", download:"Download",
     achievements:"Achievements", locked:"Locked", track_locked:"This track is coming soon", track_locked_hint:"Available with a school subscription", upgrade:"Get subscription", unit_label:"UNIT", lesson_start:"START", unit_locked:"Finish the previous unit first", add_section:"Add section", edit_section:"Edit section", add_lesson:"Add lesson", edit_lesson:"Edit lesson", delete_lesson:"Delete lesson", delete_lesson_confirm:"Delete lesson \u201c{name}\u201d?", lesson_link:"Lesson link", lesson_duration:"Duration (min)", certificate:"Certificate", cert_title:"Certificate of Completion", cert_unit_done:"Unit complete!", cert_for:"this certifies that", cert_completed:"has successfully completed the unit", cert_download:"Download certificate", cert_get:"Get certificate", cert_points:"points earned", land_desc:"Our platform is not just an LMS. It's closer to a combination of Coursera + Duolingo + Brilliant + Codecademy + Notion + an AI mentor, rather than a typical online course.", brand_tag:"FIRST · WRO · STEM Projects · Drones · AI · Robotics", land_cta:"Start learning", land_login:"I already have an account", land_back:"Back", land_program:"Course program", land_th_sec:"#", land_th_name:"Section", land_th_lessons:"Lessons", land_get:"What you get", land_pricing:"Pricing", f_road:"Duolingo-style learning gamification", f_pts:"+10 points for every completed task", f_cert:"A certificate for each completed unit", f_lang:"3 languages: Russian, Kazakh, English", f_cal:"Calendar of competitions in robotics", f_crm:"CRM for teachers and leaders", f_paths:"Structured learning paths", f_progress:"Progress tracking and roadmaps", f_goals:"Goal-oriented learning", land_req:"What do you need to get started?", land_req_1:"Laptop or tablet", land_req_2:"Lego Spike Prime", land_req_3:"Internet connection", land_final_t:"Ready to start the champion\u2019s journey?", land_final_s:"Access opens instantly. Start learning.", land_footer:"Made in Kazakhstan 🇰🇿", land_more_tracks:"and more", open_lesson:"Open lesson (Canva)", 
     subs:"Subscriptions", choose:"Choose plan", current:"Current plan", recommended:"Recommended",
@@ -485,8 +494,34 @@ function coachbar(){
 
 /* ---------------- LOGIN ---------------- */
 let LOGIN_ROLE='teacher';
+function isPhoneRole(r){ return r==='parent'||r==='student'; }
+function authCredentialFields(mode){
+  // Staff (teacher/admin): email+password. Parent/student: phone / student ID (Firebase email under the hood).
+  if(isPhoneRole(LOGIN_ROLE)){
+    if(LOGIN_ROLE==='parent'){
+      return `
+      <p class="form-sub">${t('auth_parent_hint')}</p>
+      <input id="authPhone" type="tel" autocomplete="tel" inputmode="tel" placeholder="${t('auth_phone')}">
+      <input id="authStudentId" inputmode="numeric" maxlength="4" placeholder="${t('auth_student_id')}">`;
+    }
+    return `
+      <p class="form-sub">${t('auth_student_hint')}</p>
+      <input id="authStudentId" inputmode="numeric" maxlength="4" placeholder="${t('auth_student_id')}" oninput="onStudentIdInput(this)">`;
+  }
+  return `
+    <input id="authEmail" type="email" autocomplete="email" placeholder="${t('auth_email')}">
+    <input id="authPass" type="password" autocomplete="${mode==='in'?'current-password':'new-password'}" placeholder="${t('auth_pass')}">
+    ${mode==='up'?`<input id="authPass2" type="password" autocomplete="new-password" placeholder="${t('auth_pass_confirm')}">`:''}`;
+}
 function renderLogin(){
   const roles=[['teacher','👨‍🏫'],['admin','🏫'],['parent','👪'],['student','🧑‍🎓']];
+  const cloudFields = window.CJ_CLOUD ? (
+    isPhoneRole(LOGIN_ROLE) ? authCredentialFields('up') : `
+    <div style="font-weight:800;margin:20px 0 8px;opacity:.95">${t('auth_email')}</div>
+    <input id="regEmail" type="email" autocomplete="email" placeholder="${t('auth_email')}">
+    <input id="regPass" type="password" autocomplete="new-password" placeholder="${t('auth_pass')}">
+    <input id="regPass2" type="password" autocomplete="new-password" placeholder="${t('auth_pass_confirm')}">`
+  ) : '';
   app().innerHTML=`<div class="login">
     <button class="lland-back" onclick="backToLanding()">← ${t('land_back')}</button>
     <div class="login-actions">${themeToggleBtn()}</div>
@@ -513,10 +548,7 @@ function renderLogin(){
       </div>`).join('')}
     </div>` : '' }
     ${ window.CJ_CLOUD ? `
-    <div style="font-weight:800;margin:20px 0 8px;opacity:.95">${t('auth_email')}</div>
-    <input id="regEmail" type="email" autocomplete="email" placeholder="${t('auth_email')}">
-    <input id="regPass" type="password" autocomplete="new-password" placeholder="${t('auth_pass')}">
-    <input id="regPass2" type="password" autocomplete="new-password" placeholder="${t('auth_pass_confirm')}">
+    ${cloudFields}
     <button class="start" onclick="doLogin()">${t('auth_signup')} →</button>
     <button class="lland-ghost link" onclick="showAuthDirect()">${t('auth_to_signin')}</button>` : `
     <button class="start" onclick="doLogin()">${t('start')} →</button>` }
@@ -556,7 +588,7 @@ function buildAuthUser(){
   if(!S.coach||!S.coach.length) S.coach=[{from:'ai',text:t('coach_greet')}];
   return true;
 }
-function enterApp(){ location.href='/pages/login.html?fresh=1'; }
+function enterApp(){ location.href='/pages/apply.html'; }
 function enterExistingAccount(){ location.href='/pages/auth.html?signin=1'; }
 function backToLanding(){ location.href='/'; }
 function renderLanding(){
@@ -598,21 +630,22 @@ function renderLanding(){
     <div class="lland-foot">${logoSVG(26)}<div>${t('land_footer')}</div></div>
   </div>`;
 }
-function setLang(l,relogin){ LANG=l; if(S) S.lang=l; save(); if(relogin){ if(document.getElementById('authEmail')) renderAuth(); else if(document.querySelector('.login')) renderLogin(); else if(document.querySelector('.landing')){ renderLanding(); bindScreen(); } else render(); } else if(!S||!S.user){ renderLanding(); bindScreen(); } else render(); }
+function setLang(l,relogin){
+  LANG=l; if(S) S.lang=l; save();
+  if(relogin){
+    if(document.querySelector('.apply-page')){ renderApply(); bindScreen(); }
+    else if(document.getElementById('authEmail')||document.getElementById('authPhone')||document.getElementById('authStudentId')||document.querySelector('.form-h')){ renderAuth(); bindScreen(); }
+    else if(document.querySelector('.landing')){ renderLanding(); bindScreen(); }
+    else if(document.querySelector('.login')){ renderAuth(); bindScreen(); }
+    else render();
+  } else if(!S||!S.user){
+    if(document.querySelector('.apply-page')){ renderApply(); bindScreen(); }
+    else { renderLanding(); bindScreen(); }
+  } else render();
+}
 function doLogin(){
-  const n=(document.getElementById('loginName').value||'').trim();
-  if(!n){ toast(t('auth_name_required')); return; }
-  S.user={ name:n, role:LOGIN_ROLE };
-  if(LOGIN_ROLE==='student') applyStudentSurvey();
-  S.coach=[{from:'ai',text:t('coach_greet')}];
-  save();
-  if(window.CJ_CLOUD && !CJ_UID){
-    AUTH_MODE='up';
-    doCloudAuth();
-    return;
-  }
-  location.href='/app/home.html';
-  if(S.user.surveyMsg){ setTimeout(()=>toast(S.user.surveyMsg),300); }
+  // Registration removed — accounts are created by teachers; send users to sign-in.
+  enterExistingAccount();
 }
 function isStaff(){ return S.user && (S.user.role==='teacher'||S.user.role==='admin'); }
 
@@ -1427,79 +1460,216 @@ window.addEventListener('keydown',e=>{ if(e.key==='Escape')closeSheet(); });
 
 
 function renderAuth(){
+  AUTH_MODE='in';
   const head=`<button class="lland-back" onclick="authBack()">← ${t('land_back')}</button>
     <div class="login-actions">${themeToggleBtn()}</div>
     ${authLangSel()}
     <div class="logo-wrap">${logoSVG(72)}<h1>Champion's Journey</h1></div>`;
-  let body='';
-  if(AUTH_MODE==='in'){
-    body=`<div class="form-h">${t('auth_signin')}</div>
-    <input id="authEmail" type="email" autocomplete="email" placeholder="${t('auth_email')}">
-    <input id="authPass" type="password" autocomplete="current-password" placeholder="${t('auth_pass')}">
-    <button class="start" onclick="doCloudAuth()">${t('auth_signin')} →</button>
-    <button class="lland-ghost link" onclick="toggleAuth()">${t('auth_to_signup')}</button>`;
-  } else if(S.user){
-    const lvl=S.user.level?`<div class="auth-result">${t('your_level')}: <b>${t('lvl_'+S.user.level)} ${S.user.level==='advanced'?'🏆':'🚀'}</b><span>${t('auth_save_hint')}</span></div>`:'';
-    body=`${lvl}
-    <div class="form-h">${t('auth_save_title')}</div>
-    <p class="form-sub">${t('auth_save_hint')}</p>
-    <input id="authEmail" type="email" autocomplete="email" placeholder="${t('auth_email')}">
-    <input id="authPass" type="password" autocomplete="new-password" placeholder="${t('auth_pass')}">
-    <button class="start" onclick="doCloudAuth()">${t('auth_signup')} →</button>`;
-  } else {
-    body=`<div class="form-h">${t('auth_register_title')}</div>
-    <p class="form-sub">${t('auth_register_sub')}</p>
+  const body=`<div class="form-h">${t('auth_signin')}</div>
+    <p class="form-sub">${t('auth_signin_only')}</p>
     <div style="font-weight:800;margin-bottom:10px">${t('choose_role')}</div>
     ${authRolesHtml('pickRoleAuth')}
-    <div style="font-weight:800;margin:16px 0 8px">${t('your_name')}</div>
-    <input id="authName" placeholder="${t('your_name')}" value="">
-    ${authSurveyHtml()}
-    <input id="authEmail" type="email" autocomplete="email" placeholder="${t('auth_email')}">
-    <input id="authPass" type="password" autocomplete="new-password" placeholder="${t('auth_pass')}">
-    <input id="authPass2" type="password" autocomplete="new-password" placeholder="${t('auth_pass_confirm')}">
-    <button class="start" onclick="doCloudAuth()">${t('auth_signup')} →</button>
-    <button class="lland-ghost link" onclick="toggleAuth()">${t('auth_to_signin')}</button>`;
-  }
+    ${authCredentialFields('in')}
+    ${isPhoneRole(LOGIN_ROLE)?`<div style="font-weight:800;margin:16px 0 8px">${t('your_name')}</div>
+    <input id="authName" placeholder="${LOGIN_ROLE==='student'?t('auth_name_from_id'):t('your_name')}" value="" ${LOGIN_ROLE==='student'?'readonly':''}>`:''}
+    <button class="start" onclick="doCloudAuth()">${t('auth_signin')} →</button>
+    <button class="lland-ghost link" onclick="enterApp()">${t('auth_to_apply')}</button>`;
   app().innerHTML=`<div class="login">${head}${body}</div>`;
 }
-function authBack(){ if(S.user) location.href='/pages/login.html'; else backToLanding(); }
+function authBack(){ backToLanding(); }
 function showAuthDirect(){ location.href='/pages/auth.html?signin=1'; }
-function toggleAuth(){ AUTH_MODE=AUTH_MODE==='in'?'up':'in'; renderAuth(); }
-async function doCloudAuth(){
+function toggleAuth(){ AUTH_MODE='in'; renderAuth(); }
+
+let _studentIdLookupT = null;
+async function onStudentIdInput(el){
+  if(LOGIN_ROLE!=='student') return;
+  const code = String(el?.value || '').replace(/\D/g, '').slice(0, 4);
+  if(el && el.value !== code) el.value = code;
+  const nameEl = document.getElementById('authName');
+  if(!nameEl) return;
+  if(code.length < 4){
+    nameEl.value = '';
+    return;
+  }
+  clearTimeout(_studentIdLookupT);
+  _studentIdLookupT = setTimeout(async () => {
+    const cloud = window.CJ_CLOUD;
+    if(!cloud?.getStudentLink) return;
+    try{
+      const link = await cloud.getStudentLink(code);
+      if(String(document.getElementById('authStudentId')?.value || '') !== code) return;
+      nameEl.value = link?.studentName || '';
+      if(!link) toast(t('auth_link_missing'));
+    }catch(e){
+      nameEl.value = '';
+    }
+  }, 200);
+}
+
+function renderApply(){
+  app().innerHTML=`<div class="login apply-page">
+    <button class="lland-back" onclick="backToLanding()">← ${t('land_back')}</button>
+    <div class="login-actions">${themeToggleBtn()}</div>
+    ${authLangSel()}
+    <div class="logo-wrap">${logoSVG(64)}<h1>${t('apply_title')}</h1></div>
+    <p class="form-sub" style="text-align:center">${t('apply_sub')}</p>
+    <div class="form-h">${t('apply_student_block')}</div>
+    <input id="applyStudentName" placeholder="${t('apply_student_name')}" autocomplete="name">
+    <input id="applyStudentAge" type="number" min="5" max="18" inputmode="numeric" placeholder="${t('apply_student_age')}">
+    <div class="form-h" style="margin-top:18px">${t('apply_parent_block')}</div>
+    <input id="applyParentName" placeholder="${t('apply_parent_name')}" autocomplete="name">
+    <input id="applyParentPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="${t('apply_parent_phone')}">
+    <input id="applyCity" placeholder="${t('apply_city')}" value="Астана">
+    <button class="start" id="applySubmitBtn" onclick="submitApplicationForm()">${t('apply_submit')} →</button>
+    <button class="lland-ghost link" onclick="enterExistingAccount()">${t('land_login')}</button>
+  </div>`;
+}
+
+async function submitApplicationForm(){
+  const studentName=(document.getElementById('applyStudentName')?.value||'').trim();
+  const parentName=(document.getElementById('applyParentName')?.value||'').trim();
+  const parentPhone=(document.getElementById('applyParentPhone')?.value||'').trim();
+  const studentAge=(document.getElementById('applyStudentAge')?.value||'').trim();
+  const city=(document.getElementById('applyCity')?.value||'').trim();
+  if(!studentName||!parentName){ toast(t('auth_name_required')); return; }
+  if(!isValidPhone(parentPhone)){ toast(t('auth_phone_short')); return; }
+  if(!window.CJ_CLOUD?.submitApplication){ toast(t('apply_need_firebase')); return; }
+  const btn=document.getElementById('applySubmitBtn');
+  if(btn){ btn.disabled=true; btn.textContent=t('apply_sending'); }
+  try{
+    await window.CJ_CLOUD.submitApplication({
+      studentName,
+      studentAge,
+      parentName,
+      parentPhone: normalizePhone(parentPhone),
+      city,
+    });
+    app().innerHTML=`<div class="login apply-page">
+      <button class="lland-back" onclick="backToLanding()">← ${t('land_back')}</button>
+      <div class="logo-wrap">${logoSVG(72)}<h1>${t('apply_thanks_title')}</h1></div>
+      <p class="form-sub" style="text-align:center">${t('apply_thanks_sub')}</p>
+      <button class="start" onclick="backToLanding()">${t('land_back')}</button>
+      <button class="lland-ghost link" onclick="enterExistingAccount()">${t('land_login')}</button>
+    </div>`;
+  }catch(e){
+    toast((e&&e.message)||t('apply_error'));
+    if(btn){ btn.disabled=false; btn.textContent=t('apply_submit')+' →'; }
+  }
+}
+
+function mapAuthError(err){
+  const msg=(err&&err.message)||String(err||'');
+  if(msg.includes('STUDENT_ID_NOT_FOUND')) return t('auth_link_missing');
+  if(msg.includes('PARENT_ALREADY_LINKED')||msg.includes('STUDENT_ALREADY_LINKED')) return t('auth_link_taken');
+  if(msg.includes('auth/email-already-in-use')||msg.includes('EMAIL_EXISTS')) return t('auth_to_signin');
+  if(msg.includes('auth/invalid-credential')||msg.includes('INVALID_LOGIN')||msg.includes('INVALID_PASSWORD')) return t('auth_fill');
+  return msg||'Auth error';
+}
+
+function resolveAuthCredentials(mode){
+  if(LOGIN_ROLE==='parent'){
+    const phone=(document.getElementById('authPhone')?.value||'').trim();
+    const studentId=(document.getElementById('authStudentId')?.value||'').trim();
+    if(!isValidPhone(phone)) return { error: t('auth_phone_short') };
+    if(!isValidStudentId(studentId)) return { error: t('auth_id_invalid') };
+    return {
+      email: parentAuthEmail(phone),
+      pass: parentAuthPassword(phone),
+      phone: normalizePhone(phone),
+      studentId,
+    };
+  }
+  if(LOGIN_ROLE==='student'){
+    const studentId=(document.getElementById('authStudentId')?.value||'').trim();
+    if(!isValidStudentId(studentId)) return { error: t('auth_id_invalid') };
+    return {
+      email: studentAuthEmail(studentId),
+      pass: studentAuthPassword(studentId),
+      studentId,
+    };
+  }
   const emailEl=document.getElementById('authEmail')||document.getElementById('regEmail');
   const passEl=document.getElementById('authPass')||document.getElementById('regPass');
   const pass2El=document.getElementById('authPass2')||document.getElementById('regPass2');
   const e=(emailEl?.value||'').trim();
   const p=(passEl?.value||'').trim();
-  if(!e||!p){ toast(t('auth_fill')); return; }
-  if(p.length<6){ toast(t('auth_pass_short')); return; }
-  if(!window.CJ_CLOUD){ toast('Firebase not ready'); return; }
-  if(AUTH_MODE==='up'){
-    if(!S.user){
-      if(!buildAuthUser()){ toast(t('auth_name_required')); return; }
-    }
+  if(!e||!p) return { error: t('auth_fill') };
+  if(p.length<6) return { error: t('auth_pass_short') };
+  if(mode==='up'){
     const p2=(pass2El?.value||'').trim();
-    if(p!==p2){ toast(t('auth_pass_mismatch')); return; }
-    save();
+    // Confirm field optional when missing from UI (save-progress path)
+    if(pass2El && p!==p2) return { error: t('auth_pass_mismatch') };
   }
-  const surveyMsg=S.user&&S.user.surveyMsg;
+  return { email: e, pass: p };
+}
+
+async function linkAfterAuth(uid, creds){
+  const cloud=window.CJ_CLOUD;
+  if(!cloud) return;
+  if(LOGIN_ROLE==='parent' && creds.studentId){
+    const link=await cloud.claimStudentLinkAsParent(creds.studentId, {
+      parentUid: uid,
+      parentName: S.user?.name || '',
+      parentPhone: creds.phone,
+    });
+    S.user.phone = creds.phone;
+    S.user.studentId = creds.studentId;
+    S.user.linkedStudentUid = link.studentUid || undefined;
+    S.plan = S.plan || 'course';
+  } else if(LOGIN_ROLE==='student' && creds.studentId){
+    const link=await cloud.claimStudentLinkAsStudent(creds.studentId, {
+      studentUid: uid,
+      studentName: S.user?.name || '',
+    });
+    S.user.studentId = creds.studentId;
+    S.user.linkedParentUid = link.parentUid || undefined;
+    S.plan = S.plan || 'course';
+  }
+}
+
+async function doCloudAuth(){
+  if(!window.CJ_CLOUD){ toast('Firebase not ready'); return; }
+  AUTH_MODE='in';
+  if(isPhoneRole(LOGIN_ROLE) && !S.user){
+    const n=(document.getElementById('authName')?.value||'').trim();
+    if(!n){ toast(t('auth_name_required')); return; }
+    S.user={ name:n, role:LOGIN_ROLE };
+  }
+  const creds = resolveAuthCredentials('in');
+  if(creds.error){ toast(creds.error); return; }
   try{
-    let cred;
-    if(AUTH_MODE==='in') cred=await window.CJ_CLOUD.signIn(e,p);
-    else cred=await window.CJ_CLOUD.signUp(e,p);
-    const uid=cred.user.uid;
+    const authCred=await window.CJ_CLOUD.signIn(creds.email, creds.pass);
+    const uid=authCred.user.uid;
     CJ_UID=uid;
     window.CJ_UID=uid;
     let remote=null;
     try{ remote=await window.CJ_CLOUD.load(uid); }catch(syncErr){}
-    if(remote&&remote.user){ const localCrm=S&&S.crm; S=remote; if(!S.crm&&localCrm) S.crm=localCrm; }
-    else if(AUTH_MODE==='up'&&S.user) await window.CJ_CLOUD.save(uid,S);
-    else if(!S.user) S.user={ name:e.split('@')[0], role:LOGIN_ROLE||'student' };
+    if(remote&&remote.user){
+      const localCrm=S&&S.crm;
+      S=remote;
+      if(!S.crm&&localCrm) S.crm=localCrm;
+      if(!S.user.name){
+        const n=(document.getElementById('authName')?.value||'').trim();
+        if(n) S.user.name=n;
+      }
+      S.user.role=LOGIN_ROLE||S.user.role;
+    } else if(!S.user) {
+      S.user={ name:creds.email.split('@')[0], role:LOGIN_ROLE||'student' };
+    }
+    // Parent: bind to student via Student ID for progress tracking
+    if(LOGIN_ROLE==='parent' && creds.studentId){
+      try{
+        await linkAfterAuth(uid, creds);
+        await window.CJ_CLOUD.save(uid, S);
+      }catch(e){
+        toast(mapAuthError(e));
+        return;
+      }
+    }
     LANG=S.lang||'ru';
     save();
     location.href='/app/home.html';
-    if(surveyMsg) setTimeout(()=>toast(surveyMsg),400);
-  }catch(err){ toast((err&&err.message)||'Auth error'); }
+  }catch(err){ toast(mapAuthError(err)); }
 }
 function cloudLogout(){ if(window.CJ_CLOUD){ try{ window.CJ_CLOUD.signOut(); }catch(e){} } }
 
@@ -1612,60 +1782,37 @@ export function mountLanding(): void {
 }
 
 export function mountLoginPage(): void {
+  // Public self-registration removed — reuse sign-in page.
+  location.replace('/pages/auth.html?signin=1');
+}
+
+export function mountAuthPage(): void {
   load();
   loadTheme();
-  const isFresh = new URLSearchParams(location.search).has('fresh');
+  AUTH_MODE = 'in';
   initFirebase(() => {
     void (async () => {
-      if (isFresh) {
-        S.user = null;
-        save();
-        const cloud = getCloud();
-        if (cloud) {
-          try { await cloud.signOut(); } catch { /* */ }
-          window.CJ_UID = null;
-        }
-      } else if (S.user) {
-        location.href = '/app/home.html';
-        return;
+      const cloud = getCloud();
+      S.user = null;
+      save();
+      if (cloud) {
+        try { await cloud.signOut(); } catch { /* */ }
+        window.CJ_UID = null;
       }
-      renderLogin();
+      renderAuth();
       bindScreen();
       exposeGlobals();
     })();
   });
 }
 
-export function mountAuthPage(): void {
+export function mountApplyPage(): void {
   load();
   loadTheme();
-  const params = new URLSearchParams(location.search);
-  const isRegister = params.has('register');
-  const isSignin = params.has('signin');
   initFirebase(() => {
-    void (async () => {
-      const cloud = getCloud();
-      if (isRegister) {
-        S.user = null;
-        save();
-        AUTH_MODE = 'up';
-        if (cloud) {
-          try { await cloud.signOut(); } catch { /* */ }
-          window.CJ_UID = null;
-        }
-      } else if (isSignin) {
-        AUTH_MODE = 'in';
-        S.user = null;
-        save();
-        if (cloud) {
-          try { await cloud.signOut(); } catch { /* */ }
-          window.CJ_UID = null;
-        }
-      }
-      renderAuth();
-      bindScreen();
-      exposeGlobals();
-    })();
+    renderApply();
+    bindScreen();
+    exposeGlobals();
   });
 }
 
@@ -1675,6 +1822,7 @@ function exposeGlobals(): void {
     nav, openSub, goBack, render, toast, closeSheet, openSheet,
     setLang, doLogin, pickRole, pickRoleAuth, pickChip, chipVal,
     toggleAuth, doCloudAuth, authBack, enterApp, enterExistingAccount, backToLanding,
+    submitApplicationForm, renderApply, onStudentIdInput,
     enableFriends, setTrack, openTrackFromHome, completeLesson, showCertificate,
     openLessonSheet, completeFromSheet, markAttendance, publishPost, likePost,
     focusComment, addComment, setCalMode, calMove, togglePaid, choosePlan,

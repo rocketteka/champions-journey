@@ -5,6 +5,7 @@ const pages = {
   main: resolve(__dirname, 'index.html'),
   login: resolve(__dirname, 'pages/login.html'),
   auth: resolve(__dirname, 'pages/auth.html'),
+  apply: resolve(__dirname, 'pages/apply.html'),
   home: resolve(__dirname, 'app/home.html'),
   journey: resolve(__dirname, 'app/journey.html'),
   feed: resolve(__dirname, 'app/feed.html'),

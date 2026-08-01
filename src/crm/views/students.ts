@@ -42,6 +42,7 @@ export function studentFormHtml(student) {
   <div class="crm-form">
     ${formField(ct('crm_first_name'), 'crm_f_fn', s.firstName)}
     ${formField(ct('crm_last_name'), 'crm_f_ln', s.lastName)}
+    ${s.studentId ? `<div class="crm-field"><label>${ct('crm_student_id')}</label><div class="crm-student-id">${esc(s.studentId)}</div><div class="crm-hint">${ct('crm_student_id_hint')}</div></div>` : `<div class="crm-hint">${ct('crm_student_id_auto')}</div>`}
     ${formField(ct('crm_parent'), 'crm_f_parent', s.parentName)}
     ${formField(ct('crm_parent_phone'), 'crm_f_pphone', s.parentPhone)}
     ${formField(ct('crm_school'), 'crm_f_school', s.school)}

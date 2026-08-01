@@ -11,6 +11,7 @@ import { renderGroups, renderGroupDetail, groupFormHtml, readGroupForm } from '.
 import { renderSession, setSessionStatus, buildSessionRecords, clearSession, getSessionState } from './views/session.js';
 import { renderSchedule } from './views/schedule.js';
 import { renderReports } from './views/reports.js';
+import { renderApplications } from './views/applications.js';
 
 const ctx = {
   tab: 'dashboard',
@@ -20,6 +21,9 @@ const ctx = {
   scheduleMode: 'today',
   reportPeriod: 'month',
   lang: 'ru',
+  applications: [],
+  applicationsLoading: false,
+  applicationsLoaded: false,
   _payBusy: false,
   _saveBusy: false,
 };
@@ -34,8 +38,11 @@ function escAttr(s) {
 }
 
 function shell(content) {
+  const newApps = (ctx.applications || []).filter((a) => a.status === 'new').length;
+  const appsLabel = newApps > 0 ? `${ct('crm_applications')} (${newApps})` : ct('crm_applications');
   const tabs = [
     ['dashboard', '🏠', ct('crm_dash')],
+    ['applications', '📝', appsLabel],
     ['students', '🧑‍🎓', ct('crm_students')],
     ['groups', '👥', ct('crm_groups')],
     ['schedule', '📅', ct('crm_schedule')],
@@ -62,6 +69,7 @@ function bodyHtml() {
   if (ctx.tab === 'group' && ctx.detailId) return renderGroupDetail(ctx, ctx.detailId);
   if (ctx.tab === 'session' && ctx.detailId) return renderSession(ctx, ctx.detailId);
   if (ctx.tab === 'dashboard') return renderDashboard(ctx);
+  if (ctx.tab === 'applications') return renderApplications(ctx);
   if (ctx.tab === 'students') return renderStudents(ctx);
   if (ctx.tab === 'groups') return renderGroups(ctx);
   if (ctx.tab === 'schedule') return renderSchedule(ctx);
@@ -95,19 +103,79 @@ function closeOverlay() {
 window.CJ_CRM = {
   render() {
     syncCtx();
+    if (!ctx.applicationsLoaded && !ctx.applicationsLoading) {
+      queueMicrotask(() => window.CJ_CRM?.loadApplications?.());
+    }
     return shell(bodyHtml());
   },
 
   go(tab, id) {
     ctx.tab = tab;
     ctx.detailId = id || null;
-    if (['dashboard', 'students', 'groups', 'schedule', 'reports'].includes(tab)) {
+    if (['dashboard', 'applications', 'students', 'groups', 'schedule', 'reports'].includes(tab)) {
       ctx.detailId = null;
     }
-    rerender();
+    if (tab === 'applications') this.loadApplications();
+    else rerender();
   },
 
   rerender,
+
+  async loadApplications(force) {
+    if (ctx.applicationsLoading) return;
+    if (ctx.applicationsLoaded && !force && ctx.tab !== 'applications' && ctx.tab !== 'dashboard') return;
+    const cloud = window.CJ_CLOUD;
+    if (!cloud?.listApplications) {
+      ctx.applications = [];
+      ctx.applicationsLoaded = true;
+      rerender();
+      return;
+    }
+    ctx.applicationsLoading = true;
+    if (ctx.tab === 'applications') rerender();
+    try {
+      ctx.applications = await cloud.listApplications();
+      ctx.applicationsLoaded = true;
+    } catch (e) {
+      console.warn('loadApplications', e);
+      ctx.applications = ctx.applications || [];
+    }
+    ctx.applicationsLoading = false;
+    rerender();
+  },
+
+  async setApplicationStatus(id, status) {
+    const cloud = window.CJ_CLOUD;
+    if (!cloud?.updateApplicationStatus || !id) return;
+    try {
+      await cloud.updateApplicationStatus(id, status);
+      const row = ctx.applications.find((a) => a.id === id);
+      if (row) row.status = status;
+      window.toast?.('✓ ' + ct('crm_app_updated'));
+      rerender();
+    } catch (e) {
+      console.warn(e);
+      window.toast?.(String(e?.message || e));
+    }
+  },
+
+  enrollFromApplication(id) {
+    const app = ctx.applications.find((a) => a.id === id);
+    if (!app) return;
+    const parts = String(app.studentName || '').trim().split(/\s+/);
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ');
+    openOverlay(studentFormHtml({
+      firstName,
+      lastName,
+      parentName: app.parentName || '',
+      parentPhone: app.parentPhone || '',
+      city: app.city || 'Астана',
+      age: app.studentAge ? +app.studentAge : null,
+    }));
+    // mark contacted when teacher starts enroll flow
+    if (app.status === 'new') this.setApplicationStatus(id, 'contacted');
+  },
 
   setFilter(f) {
     ctx.filter = f;
@@ -152,7 +220,7 @@ window.CJ_CRM = {
     openOverlay(studentFormHtml(s));
   },
 
-  saveStudentForm(id) {
+  async saveStudentForm(id) {
     if (ctx._saveBusy) return;
     ctx._saveBusy = true;
     const data = readStudentForm(id);
@@ -174,9 +242,37 @@ window.CJ_CRM = {
     } else if (!formGroupId && student.groupId) {
       CrmStore.removeFromGroup(student.groupId, student.id);
     }
+
+    // Allocate 4-digit Student ID once and publish link registry (teacher → parent/student)
+    try {
+      const cloud = window.CJ_CLOUD;
+      const teacherUid = window.CJ_UID;
+      if (cloud?.allocateStudentId && teacherUid && student && !student.studentId) {
+        const code = await cloud.allocateStudentId();
+        student.studentId = code;
+        CrmStore.saveStudent(student);
+        const name = [student.firstName, student.lastName].filter(Boolean).join(' ').trim();
+        await cloud.publishStudentLink({
+          code,
+          studentName: name,
+          crmStudentId: student.id,
+          teacherUid,
+          parentUid: null,
+          studentUid: null,
+          parentName: student.parentName || null,
+          parentPhone: student.parentPhone || null,
+        });
+        window.toast?.(`✓ ${ct('crm_student_saved')} · ID ${code}`);
+      } else {
+        window.toast?.('✓ ' + ct('crm_student_saved') + (student?.studentId ? ` · ID ${student.studentId}` : ''));
+      }
+    } catch (e) {
+      console.warn('studentId publish failed', e);
+      window.toast?.('✓ ' + ct('crm_student_saved'));
+    }
+
     ctx._saveBusy = false;
     closeOverlay();
-    window.toast?.('✓ ' + ct('crm_student_saved'));
     rerender();
   },
 

@@ -656,6 +656,79 @@ html[data-theme="dark"] {
   color: var(--muted);
   margin-bottom: 6px;
 }
+.crm-student-id {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: var(--green, #58CC02);
+  padding: 8px 0;
+}
+.crm-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.crm-app-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  cursor: pointer;
+}
+.crm-app-summary-num {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--purple, #58CC02);
+  min-width: 48px;
+  text-align: center;
+}
+.crm-app-summary-txt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.crm-app-summary-txt b { color: var(--ink); font-size: 15px; }
+.crm-app-count { font-size: 12px; font-weight: 700; color: var(--muted); }
+.crm-app-list { padding: 0; overflow: hidden; }
+.crm-app-row {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  align-items: flex-start;
+}
+.crm-app-row:last-child { border-bottom: none; }
+.crm-app-main { flex: 1; min-width: 0; }
+.crm-app-title { font-weight: 800; font-size: 15px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.crm-app-sub, .crm-app-meta { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 4px; }
+.crm-app-note { font-size: 12px; margin-top: 6px; font-weight: 600; }
+.crm-app-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.crm-app-status {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+.crm-app-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+}
+.crm-app-badge.st-new { background: #e8f8d8; color: #3a7a00; }
+.crm-app-badge.st-contacted { background: #e8f0ff; color: #2456c8; }
+.crm-app-badge.st-enrolled { background: #dff7ef; color: #0a7a52; }
+.crm-app-badge.st-rejected { background: #fde8e8; color: #b42318; }
 .crm-field input, .crm-field select, .crm-field textarea {
   width: 100%;
   padding: 12px;

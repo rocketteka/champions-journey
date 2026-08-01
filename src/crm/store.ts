@@ -322,7 +322,7 @@ export const CrmStore = {
       if (s.status === 'archived') return false;
       const hay = [
         s.firstName, s.lastName, s.parentName, s.parentPhone, s.phone,
-        s.school, s.grade, s.city,
+        s.school, s.grade, s.city, s.studentId,
       ].join(' ').toLowerCase();
       return hay.includes(qq);
     });

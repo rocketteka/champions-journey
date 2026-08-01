@@ -41,6 +41,7 @@ export function renderStudentCard(ctx, id) {
   </div>
 
   <div class="crm-card crm-kv-grid">
+    <div><span>${ct('crm_student_id')}</span><b>${esc(s.studentId || '—')}</b></div>
     <div><span>${ct('crm_age')}</span><b>${studentAgeLabel(s)}</b></div>
     <div><span>${ct('crm_parent')}</span><b>${esc(s.parentName || '—')}</b></div>
     <div><span>${ct('crm_parent_phone')}</span><b>${esc(s.parentPhone || '—')}</b></div>

@@ -18,6 +18,7 @@
     }
   },
   "include": [
+    "src/vite-env.d.ts",
     "src/core/**/*.ts",
     "src/pages/**/*.ts",
     "vite.config.ts"

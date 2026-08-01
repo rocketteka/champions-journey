@@ -49,7 +49,21 @@ export function renderDashboard(ctx) {
     </div>`;
   }).join('') || '<div class="crm-empty-sm">—</div>';
 
+  const apps = ctx.applications || [];
+  const newApps = apps.filter((a) => a.status === 'new').length;
+  const appsBlock = `
+  ${sectionTitle(ct('crm_applications'), `<button type="button" class="crm-btn sm ghost" onclick="CJ_CRM.go('applications')">${ct('crm_all')}</button>`)}
+  <div class="crm-card crm-app-summary" onclick="CJ_CRM.go('applications')">
+    <div class="crm-app-summary-num">${newApps}</div>
+    <div class="crm-app-summary-txt">
+      <b>${ct('crm_apps_new')}</b>
+      <span>${ct('crm_apps_total')}: ${apps.length} · ${ct('crm_apps_from_cta')}</span>
+    </div>
+    <div class="crm-row-chev">›</div>
+  </div>`;
+
   return `
+  ${appsBlock}
   ${sectionTitle(ct('crm_schedule_today'))}
   <div class="crm-card">${schedule}</div>
   ${sectionTitle(ct('crm_groups'), `<button type="button" class="crm-btn sm ghost" onclick="CJ_CRM.go('groups')">${ct('crm_all')}</button>`)}
