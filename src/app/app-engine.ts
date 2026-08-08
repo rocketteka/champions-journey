@@ -346,8 +346,36 @@ function journeyStaffBar(){
 }
 
 function load(){ try{ const r=localStorage.getItem(KEY); if(r){S=JSON.parse(r); LANG=S.lang||'ru'; return;} }catch(e){} S=seed(); }
-function save(){ try{ S.lang=LANG; localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
-  if(window.CJ_CLOUD && CJ_UID){ clearTimeout(CJ_SAVE_T); CJ_SAVE_T=setTimeout(function(){ try{ window.CJ_CLOUD.save(CJ_UID,S); }catch(e){} }, 600); }
+function crmWeight(state){
+  const c=state&&state.crm;
+  if(!c) return 0;
+  return (c.students?.length||0)*10
+    +(c.groups?.length||0)*5
+    +(c.sessions?.length||0)*3
+    +(c.curriculum?.length||0)*2
+    +(c.curriculumSections?.length||0)
+    +(c.payments?.length||0);
+}
+function save(){
+  try{
+    S.lang=LANG;
+    S._localUpdated=Date.now();
+    localStorage.setItem(KEY,JSON.stringify(S));
+  }catch(e){}
+  if(!(window.CJ_CLOUD && CJ_UID)) return;
+  clearTimeout(CJ_SAVE_T);
+  CJ_SAVE_T=setTimeout(function(){
+    CJ_SAVE_T=null;
+    const cloud=window.CJ_CLOUD;
+    const uid=CJ_UID;
+    if(!cloud||!uid) return;
+    Promise.resolve(cloud.save(uid,S)).then(function(){
+      try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+    }).catch(function(err){
+      console.error('Firebase save failed', err);
+      try{ toast('⚠️ Firebase sync failed'); }catch(e){}
+    });
+  }, 600);
 }
 function fmtMoney(n){ return (n||0).toLocaleString('ru-RU')+' ₸'; }
 function fmtDate(iso){ if(!iso)return ''; const p=iso.split('-').map(Number); return p[2]+' '+MONTHS[LANG][p[1]-1]; }
@@ -1702,22 +1730,18 @@ async function doCloudAuth(){
     const uid=authCred.user.uid;
     CJ_UID=uid;
     window.CJ_UID=uid;
-    let remote=null;
-    try{ remote=await window.CJ_CLOUD.load(uid); }catch(syncErr){}
-    if(remote&&remote.user){
-      const localCrm=S&&S.crm;
-      S=remote;
-      if(!S.crm&&localCrm) S.crm=localCrm;
+    await syncCloudUser(uid);
+    if(S&&S.user){
       if(!S.user.name){
         const n=(document.getElementById('authName')?.value||'').trim();
         if(n) S.user.name=n;
       }
       S.user.role=LOGIN_ROLE||S.user.role;
-    } else if(!S.user) {
+    } else {
       S.user={ name:creds.email.split('@')[0], role:LOGIN_ROLE||'student' };
     }
-    // Parent: bind to student via Student ID for progress tracking
-    if(LOGIN_ROLE==='parent' && creds.studentId){
+    // Parent/student: bind Student ID link for progress tracking
+    if((LOGIN_ROLE==='parent'||LOGIN_ROLE==='student') && creds.studentId){
       try{
         await linkAfterAuth(uid, creds);
         await window.CJ_CLOUD.save(uid, S);
@@ -1728,6 +1752,7 @@ async function doCloudAuth(){
     }
     LANG=S.lang||'ru';
     save();
+    flushCloudSave();
     location.href='/app/home.html';
   }catch(err){ toast(mapAuthError(err)); }
 }
@@ -1741,24 +1766,53 @@ async function syncCloudUser(uid){
   CJ_UID=uid;
   window.CJ_UID=uid;
   let remote=null;
-  try{ remote=await cloud.load(uid); }catch(e){}
-  if(remote&&remote.user){
-    // Don't lose locally entered CRM data if the cloud copy predates the CRM module
+  try{ remote=await cloud.load(uid); }catch(e){
+    console.error('Firebase load failed', e);
+    try{ toast('⚠️ Firebase load failed'); }catch(err){}
+    return false;
+  }
+
+  // No cloud doc yet — push local state so CRM/curriculum start syncing
+  if(!(remote&&remote.user)){
+    if(S&&S.user){
+      try{ await cloud.save(uid,S); }catch(e){ console.error('Firebase first save failed', e); }
+      try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+      return true;
+    }
+    return false;
+  }
+
+  const localUpdated=Math.max(+(S&&S._localUpdated)||0, +(S&&S._cloudUpdated)||0);
+  const remoteUpdated=+(remote._cloudUpdated)||0;
+  const localW=crmWeight(S);
+  const remoteW=crmWeight(remote);
+  const takeRemote = !S?.user
+    || remoteUpdated > localUpdated
+    || (remoteUpdated === localUpdated && remoteW >= localW);
+
+  if(takeRemote){
     const localCrm=S&&S.crm;
     S=remote;
-    if(!S.crm&&localCrm) S.crm=localCrm;
-    LANG=S.lang||'ru';
-    save();
-    return true;
+    // Keep local CRM only if cloud has none yet (legacy empty blob)
+    if((!S.crm || crmWeight(S)===0) && localCrm && crmWeight({crm:localCrm})>0){
+      S.crm=localCrm;
+    }
+  } else {
+    // Local is newer — push up so other devices see CRM edits
+    try{ await cloud.save(uid,S); }catch(e){ console.error('Firebase sync push failed', e); }
   }
-  return false;
+  LANG=S.lang||'ru';
+  try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+  return true;
 }
 
 function flushCloudSave(){
-  if(!window.CJ_CLOUD||!CJ_UID||!CJ_SAVE_T) return;
-  clearTimeout(CJ_SAVE_T);
-  CJ_SAVE_T=null;
-  try{ window.CJ_CLOUD.save(CJ_UID,S); }catch(e){}
+  if(!window.CJ_CLOUD||!CJ_UID) return;
+  if(CJ_SAVE_T){ clearTimeout(CJ_SAVE_T); CJ_SAVE_T=null; }
+  try{
+    const p=window.CJ_CLOUD.save(CJ_UID,S);
+    Promise.resolve(p).catch(function(err){ console.error('Firebase flush failed', err); });
+  }catch(e){ console.error('Firebase flush failed', e); }
 }
 
 function finishMountApp(opts){
@@ -1817,19 +1871,17 @@ export function mountAppPage(opts: MountOptions): void {
   initFirebase(() => {
     const cloud = getCloud();
     if (!cloud) { finishMountApp(opts); return; }
-    if (!S.user) {
-      cloud.onAuth(async (user) => {
-        if (user) await syncCloudUser(user.uid);
-        finishMountApp(opts);
-      });
-    } else {
+    // Always wait for Auth, then pull/merge Firestore BEFORE first paint.
+    // Previously, existing localStorage users skipped cloud load and save() could overwrite Firebase with stale data.
+    cloud.onAuth(async (user) => {
+      if (user) {
+        await syncCloudUser(user.uid);
+      } else {
+        CJ_UID = null;
+        window.CJ_UID = null;
+      }
       finishMountApp(opts);
-      // Rebind the Firebase session so every save() (incl. CRM edits) syncs to Firestore
-      cloud.onAuth((user) => {
-        if (user) { CJ_UID = user.uid; window.CJ_UID = user.uid; save(); }
-        else { CJ_UID = null; window.CJ_UID = null; }
-      });
-    }
+    });
   });
 }
 

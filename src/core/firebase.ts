@@ -116,13 +116,27 @@ export function initFirebase(onReady?: () => void): void {
       signOut: () => signOut(auth),
       load: async (uid) => {
         const s = await getDoc(doc(db, 'users', uid));
-        return s.exists() ? (s.data().state as AppState) : null;
+        if (!s.exists()) return null;
+        const data = s.data() || {};
+        const state = data.state as AppState | null;
+        if (!state) return null;
+        // Sync meta (stripped on save) — used to avoid stale localStorage overwriting cloud
+        (state as AppState & { _cloudUpdated?: number })._cloudUpdated =
+          typeof data.updated === 'number' ? data.updated : 0;
+        return state;
       },
       // JSON round-trip strips undefined values, which Firestore rejects
-      save: (uid, state) => setDoc(doc(db, 'users', uid), {
-        state: JSON.parse(JSON.stringify(state)) as AppState,
-        updated: Date.now(),
-      }),
+      save: async (uid, state) => {
+        const updated = Date.now();
+        const clone = JSON.parse(JSON.stringify(state)) as AppState & {
+          _cloudUpdated?: number;
+          _localUpdated?: number;
+        };
+        delete clone._cloudUpdated;
+        delete clone._localUpdated;
+        await setDoc(doc(db, 'users', uid), { state: clone, updated });
+        (state as AppState & { _cloudUpdated?: number })._cloudUpdated = updated;
+      },
       allocateStudentId: async () => {
         for (let i = 0; i < 50; i++) {
           const code = randomStudentId();

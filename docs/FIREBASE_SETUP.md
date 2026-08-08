@@ -54,3 +54,19 @@ node scripts/bootstrap-firestore.mjs
 ```
 
 Writes `_meta/schema` (informational). Clients cannot write this collection.
+
+## 6. How sync works (and common pitfalls)
+
+On every app page load the client:
+
+1. Reads `localStorage` (`champions_journey_v2`)
+2. Waits for Firebase Auth
+3. **Loads** `users/{uid}` from Firestore and merges with local by `updated` timestamp / CRM weight
+4. Debounced **saves** (~600ms) after CRM / Journey edits
+
+If sync looks broken:
+
+- Confirm login (teacher) — without Auth, `CJ_UID` is null and only localStorage is used
+- Hard-refresh after login so cloud pull runs before painting CRM
+- Check browser console for `Firebase save failed` / `Firebase load failed`
+- Remember: each role has its **own** `users/{uid}` doc. Teacher CRM does not appear in parent/student documents by design (parent/student see Journey progress via `studentId` links)
