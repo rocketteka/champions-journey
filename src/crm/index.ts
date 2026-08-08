@@ -333,6 +333,7 @@ window.CJ_CRM = {
     }
 
     // Allocate 4-digit Student ID once and keep studentLinks + users/{uid} in sync
+    let cloudOk = true;
     try {
       const cloud = window.CJ_CLOUD;
       const teacherUid = window.CJ_UID;
@@ -358,9 +359,8 @@ window.CJ_CRM = {
           parentName: student.parentName || null,
           parentPhone: student.parentPhone || null,
         });
-        window.toast?.(`✓ ${ct('crm_student_saved')} · ID ${code}`);
       } else if (student?.studentId && cloud) {
-        // Edit path: push profile fields to studentLinks (previously only local CRM was updated)
+        // Edit path: push profile fields to studentLinks
         if (cloud.ensureStudentAuth) {
           try { await cloud.ensureStudentAuth(student.studentId); } catch (e) {
             console.warn('student Auth ensure failed', e);
@@ -382,20 +382,30 @@ window.CJ_CRM = {
             parentPhone: student.parentPhone || null,
           });
         }
-        window.toast?.('✓ ' + ct('crm_student_saved') + ` · ID ${student.studentId}`);
-      } else {
-        window.toast?.('✓ ' + ct('crm_student_saved'));
       }
     } catch (e) {
+      cloudOk = false;
       console.warn('studentId publish failed', e);
-      window.toast?.('✓ ' + ct('crm_student_saved'));
+      window.toast?.('⚠️ Firebase: ' + ((e && e.message) || e));
     }
 
-    // Flush debounced users/{uid} CRM save so edits land in Firestore immediately
+    // Flush users/{uid} CRM blob immediately (school/grade/age live here, not in studentLinks)
     try {
       if (typeof window.save === 'function') window.save();
-      if (typeof window.flushCloudSave === 'function') window.flushCloudSave();
-    } catch { /* */ }
+      if (typeof window.flushCloudSave === 'function') {
+        const flushed = await window.flushCloudSave();
+        if (flushed === false) cloudOk = false;
+      }
+    } catch (e) {
+      cloudOk = false;
+      console.warn('CRM cloud flush failed', e);
+    }
+
+    if (cloudOk) {
+      window.toast?.(
+        '✓ ' + ct('crm_student_saved') + (student?.studentId ? ` · ID ${student.studentId}` : ''),
+      );
+    }
 
     ctx._saveBusy = false;
     closeOverlay();

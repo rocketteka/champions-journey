@@ -357,21 +357,31 @@ function crmWeight(state){
     +(c.curriculumSections?.length||0)
     +(c.payments?.length||0);
 }
+function activeState(){
+  // CRM mutates window.S — always persist that object when present
+  if(window.S) S=window.S;
+  return S;
+}
+function activeUid(){ return CJ_UID || window.CJ_UID || null; }
 function save(){
+  const state=activeState();
+  if(!state) return;
   try{
-    S.lang=LANG;
-    S._localUpdated=Date.now();
-    localStorage.setItem(KEY,JSON.stringify(S));
+    state.lang=LANG;
+    state._localUpdated=Date.now();
+    localStorage.setItem(KEY,JSON.stringify(state));
   }catch(e){}
-  if(!(window.CJ_CLOUD && CJ_UID)) return;
+  const uid=activeUid();
+  if(!(window.CJ_CLOUD && uid)) return;
   clearTimeout(CJ_SAVE_T);
   CJ_SAVE_T=setTimeout(function(){
     CJ_SAVE_T=null;
     const cloud=window.CJ_CLOUD;
-    const uid=CJ_UID;
-    if(!cloud||!uid) return;
-    Promise.resolve(cloud.save(uid,S)).then(function(){
-      try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+    const u=activeUid();
+    const st=activeState();
+    if(!cloud||!u||!st) return;
+    Promise.resolve(cloud.save(u,st)).then(function(){
+      try{ localStorage.setItem(KEY,JSON.stringify(st)); }catch(e){}
     }).catch(function(err){
       console.error('Firebase save failed', err);
       try{ toast('⚠️ Firebase sync failed'); }catch(e){}
@@ -1870,12 +1880,24 @@ async function syncCloudUser(uid){
 }
 
 function flushCloudSave(){
-  if(!window.CJ_CLOUD||!CJ_UID) return;
+  const cloud=window.CJ_CLOUD;
+  const uid=activeUid();
+  const state=activeState();
+  if(!cloud||!uid||!state) return Promise.resolve(false);
   if(CJ_SAVE_T){ clearTimeout(CJ_SAVE_T); CJ_SAVE_T=null; }
   try{
-    const p=window.CJ_CLOUD.save(CJ_UID,S);
-    Promise.resolve(p).catch(function(err){ console.error('Firebase flush failed', err); });
-  }catch(e){ console.error('Firebase flush failed', e); }
+    state.lang=LANG;
+    state._localUpdated=Date.now();
+    localStorage.setItem(KEY,JSON.stringify(state));
+  }catch(e){}
+  return Promise.resolve(cloud.save(uid, state)).then(function(){
+    try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
+    return true;
+  }).catch(function(err){
+    console.error('Firebase flush failed', err);
+    try{ toast('⚠️ Firebase sync failed'); }catch(e){}
+    return false;
+  });
 }
 
 function finishMountApp(opts){
@@ -1929,21 +1951,34 @@ export interface MountOptions {
 export function mountAppPage(opts: MountOptions): void {
   load();
   loadTheme();
+  try{ window.S=S; }catch(e){}
   // Flush the debounced Firestore save before the page unloads (app navigates via full page loads)
-  window.addEventListener('pagehide', flushCloudSave);
+  window.addEventListener('pagehide', () => { try{ flushCloudSave(); }catch(e){} });
   initFirebase(() => {
     const cloud = getCloud();
     if (!cloud) { finishMountApp(opts); return; }
     // Always wait for Auth, then pull/merge Firestore BEFORE first paint.
-    // Previously, existing localStorage users skipped cloud load and save() could overwrite Firebase with stale data.
+    // Only mount once — later onAuth events must not remount and wipe in-progress CRM edits.
+    let mounted = false;
     cloud.onAuth(async (user) => {
       if (user) {
         await syncCloudUser(user.uid);
+        if (!mounted) {
+          mounted = true;
+          finishMountApp(opts);
+        } else {
+          try{ window.S=S; window.LANG=LANG; window.CJ_UID=CJ_UID; }catch(e){}
+        }
       } else {
         CJ_UID = null;
         window.CJ_UID = null;
+        if (!mounted) {
+          mounted = true;
+          finishMountApp(opts);
+        } else if (!location.pathname.includes('/pages/')) {
+          location.href = '/pages/login.html';
+        }
       }
-      finishMountApp(opts);
     });
   });
 }
