@@ -1,5 +1,12 @@
+/**
+ * Regenerates src/app/app-engine.ts from the legacy monolith src/app/_raw.js.
+ *
+ * NOTE: Default `npm run build` does NOT run this anymore — app-engine.ts is the
+ * source of truth (includes apply page, auth/Student ID, Firebase sync).
+ * Use `npm run build:app-engine` only when intentionally re-deriving from _raw.js,
+ * then re-apply any features that live only in app-engine.ts.
+ */
 import fs from 'node:fs';
-import path from 'node:path';
 
 const raw = fs.readFileSync('src/app/_raw.js', 'utf8');
 
@@ -23,7 +30,7 @@ let code = raw
   )
   .replace(
     /function enterApp\(\)\{ LANDING=false; renderLogin\(\); \}/,
-    `function enterApp(){ location.href='/pages/login.html?fresh=1'; }`,
+    `function enterApp(){ location.href='/pages/apply.html'; }`,
   )
   .replace(
     /function enterExistingAccount\(\)\{ LANDING=false; AUTH_MODE='in'; if\(window\.CJ_CLOUD\) renderAuth\(\); else renderLogin\(\); \}/,
@@ -188,30 +195,64 @@ import type { AppState, Lang } from '@/core/types';
 
 const footer = `
 
+function crmWeight(state){
+  const c=state&&state.crm;
+  if(!c) return 0;
+  return (c.students?.length||0)*10
+    +(c.groups?.length||0)*5
+    +(c.sessions?.length||0)*3
+    +(c.curriculum?.length||0)*2
+    +(c.curriculumSections?.length||0)
+    +(c.payments?.length||0);
+}
+
 async function syncCloudUser(uid){
   const cloud=window.CJ_CLOUD;
   if(!cloud||!uid) return false;
   CJ_UID=uid;
   window.CJ_UID=uid;
   let remote=null;
-  try{ remote=await cloud.load(uid); }catch(e){}
-  if(remote&&remote.user){
-    // Don't lose locally entered CRM data if the cloud copy predates the CRM module
+  try{ remote=await cloud.load(uid); }catch(e){
+    console.error('Firebase load failed', e);
+    try{ toast('⚠️ Firebase load failed'); }catch(err){}
+    return false;
+  }
+  if(!(remote&&remote.user)){
+    if(S&&S.user){
+      try{ await cloud.save(uid,S); }catch(e){ console.error('Firebase first save failed', e); }
+      try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+      return true;
+    }
+    return false;
+  }
+  const localUpdated=Math.max(+(S&&S._localUpdated)||0, +(S&&S._cloudUpdated)||0);
+  const remoteUpdated=+(remote._cloudUpdated)||0;
+  const localW=crmWeight(S);
+  const remoteW=crmWeight(remote);
+  const takeRemote = !S?.user
+    || remoteUpdated > localUpdated
+    || (remoteUpdated === localUpdated && remoteW >= localW);
+  if(takeRemote){
     const localCrm=S&&S.crm;
     S=remote;
-    if(!S.crm&&localCrm) S.crm=localCrm;
-    LANG=S.lang||'ru';
-    save();
-    return true;
+    if((!S.crm || crmWeight(S)===0) && localCrm && crmWeight({crm:localCrm})>0){
+      S.crm=localCrm;
+    }
+  } else {
+    try{ await cloud.save(uid,S); }catch(e){ console.error('Firebase sync push failed', e); }
   }
-  return false;
+  LANG=S.lang||'ru';
+  try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+  return true;
 }
 
 function flushCloudSave(){
-  if(!window.CJ_CLOUD||!CJ_UID||!CJ_SAVE_T) return;
-  clearTimeout(CJ_SAVE_T);
-  CJ_SAVE_T=null;
-  try{ window.CJ_CLOUD.save(CJ_UID,S); }catch(e){}
+  if(!window.CJ_CLOUD||!CJ_UID) return;
+  if(CJ_SAVE_T){ clearTimeout(CJ_SAVE_T); CJ_SAVE_T=null; }
+  try{
+    const p=window.CJ_CLOUD.save(CJ_UID,S);
+    Promise.resolve(p).catch(function(err){ console.error('Firebase flush failed', err); });
+  }catch(e){ console.error('Firebase flush failed', e); }
 }
 
 function finishMountApp(opts){
@@ -270,19 +311,16 @@ export function mountAppPage(opts: MountOptions): void {
   initFirebase(() => {
     const cloud = getCloud();
     if (!cloud) { finishMountApp(opts); return; }
-    if (!S.user) {
-      cloud.onAuth(async (user) => {
-        if (user) await syncCloudUser(user.uid);
-        finishMountApp(opts);
-      });
-    } else {
+    // Always wait for Auth, then pull/merge Firestore BEFORE first paint.
+    cloud.onAuth(async (user) => {
+      if (user) {
+        await syncCloudUser(user.uid);
+      } else {
+        CJ_UID = null;
+        window.CJ_UID = null;
+      }
       finishMountApp(opts);
-      // Rebind the Firebase session so every save() (incl. CRM edits) syncs to Firestore
-      cloud.onAuth((user) => {
-        if (user) { CJ_UID = user.uid; window.CJ_UID = user.uid; save(); }
-        else { CJ_UID = null; window.CJ_UID = null; }
-      });
-    }
+    });
   });
 }
 
@@ -295,60 +333,37 @@ export function mountLanding(): void {
 }
 
 export function mountLoginPage(): void {
+  // Public self-registration removed — reuse sign-in page.
+  location.replace('/pages/auth.html?signin=1');
+}
+
+export function mountAuthPage(): void {
   load();
   loadTheme();
-  const isFresh = new URLSearchParams(location.search).has('fresh');
+  AUTH_MODE = 'in';
   initFirebase(() => {
     void (async () => {
-      if (isFresh) {
-        S.user = null;
-        save();
-        const cloud = getCloud();
-        if (cloud) {
-          try { await cloud.signOut(); } catch { /* */ }
-          window.CJ_UID = null;
-        }
-      } else if (S.user) {
-        location.href = '/app/home.html';
-        return;
+      const cloud = getCloud();
+      S.user = null;
+      save();
+      if (cloud) {
+        try { await cloud.signOut(); } catch { /* */ }
+        window.CJ_UID = null;
       }
-      renderLogin();
+      renderAuth();
       bindScreen();
       exposeGlobals();
     })();
   });
 }
 
-export function mountAuthPage(): void {
+export function mountApplyPage(): void {
   load();
   loadTheme();
-  const params = new URLSearchParams(location.search);
-  const isRegister = params.has('register');
-  const isSignin = params.has('signin');
   initFirebase(() => {
-    void (async () => {
-      const cloud = getCloud();
-      if (isRegister) {
-        S.user = null;
-        save();
-        AUTH_MODE = 'up';
-        if (cloud) {
-          try { await cloud.signOut(); } catch { /* */ }
-          window.CJ_UID = null;
-        }
-      } else if (isSignin) {
-        AUTH_MODE = 'in';
-        S.user = null;
-        save();
-        if (cloud) {
-          try { await cloud.signOut(); } catch { /* */ }
-          window.CJ_UID = null;
-        }
-      }
-      renderAuth();
-      bindScreen();
-      exposeGlobals();
-    })();
+    renderApply();
+    bindScreen();
+    exposeGlobals();
   });
 }
 
@@ -358,6 +373,7 @@ function exposeGlobals(): void {
     nav, openSub, goBack, render, toast, closeSheet, openSheet,
     setLang, doLogin, pickRole, pickRoleAuth, pickChip, chipVal,
     toggleAuth, doCloudAuth, authBack, enterApp, enterExistingAccount, backToLanding,
+    submitApplicationForm, renderApply, onStudentIdInput,
     enableFriends, setTrack, openTrackFromHome, completeLesson, showCertificate,
     openLessonSheet, completeFromSheet, markAttendance, publishPost, likePost,
     focusComment, addComment, setCalMode, calMove, togglePaid, choosePlan,
