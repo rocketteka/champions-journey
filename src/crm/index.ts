@@ -332,15 +332,15 @@ window.CJ_CRM = {
       CrmStore.removeFromGroup(student.groupId, student.id);
     }
 
-    // Allocate 4-digit Student ID once and publish link registry (teacher → parent/student)
+    // Allocate 4-digit Student ID once and keep studentLinks + users/{uid} in sync
     try {
       const cloud = window.CJ_CLOUD;
       const teacherUid = window.CJ_UID;
+      const name = [student.firstName, student.lastName].filter(Boolean).join(' ').trim();
       if (cloud?.allocateStudentId && teacherUid && student && !student.studentId) {
         const code = await cloud.allocateStudentId();
         student.studentId = code;
         CrmStore.saveStudent(student);
-        const name = [student.firstName, student.lastName].filter(Boolean).join(' ').trim();
         // Auth account is created here (by teacher), not when the student first opens login
         let studentUid: string | null = null;
         if (cloud.ensureStudentAuth) {
@@ -359,19 +359,43 @@ window.CJ_CRM = {
           parentPhone: student.parentPhone || null,
         });
         window.toast?.(`✓ ${ct('crm_student_saved')} · ID ${code}`);
-      } else {
-        // Backfill Auth for students who already have an ID but no Auth user yet
-        if (cloud?.ensureStudentAuth && student?.studentId) {
+      } else if (student?.studentId && cloud) {
+        // Edit path: push profile fields to studentLinks (previously only local CRM was updated)
+        if (cloud.ensureStudentAuth) {
           try { await cloud.ensureStudentAuth(student.studentId); } catch (e) {
             console.warn('student Auth ensure failed', e);
           }
         }
-        window.toast?.('✓ ' + ct('crm_student_saved') + (student?.studentId ? ` · ID ${student.studentId}` : ''));
+        if (cloud.updateStudentLinkProfile) {
+          await cloud.updateStudentLinkProfile(student.studentId, {
+            studentName: name,
+            parentName: student.parentName || null,
+            parentPhone: student.parentPhone || null,
+          });
+        } else if (cloud.publishStudentLink && teacherUid) {
+          await cloud.publishStudentLink({
+            code: student.studentId,
+            studentName: name,
+            crmStudentId: student.id,
+            teacherUid,
+            parentName: student.parentName || null,
+            parentPhone: student.parentPhone || null,
+          });
+        }
+        window.toast?.('✓ ' + ct('crm_student_saved') + ` · ID ${student.studentId}`);
+      } else {
+        window.toast?.('✓ ' + ct('crm_student_saved'));
       }
     } catch (e) {
       console.warn('studentId publish failed', e);
       window.toast?.('✓ ' + ct('crm_student_saved'));
     }
+
+    // Flush debounced users/{uid} CRM save so edits land in Firestore immediately
+    try {
+      if (typeof window.save === 'function') window.save();
+      if (typeof window.flushCloudSave === 'function') window.flushCloudSave();
+    } catch { /* */ }
 
     ctx._saveBusy = false;
     closeOverlay();

@@ -1863,6 +1863,8 @@ async function syncCloudUser(uid){
     try{ await cloud.save(uid,S); }catch(e){ console.error('Firebase sync push failed', e); }
   }
   LANG=S.lang||'ru';
+  // CRM reads window.S — keep it pointed at the same object as module S
+  try{ window.S=S; window.LANG=LANG; }catch(e){}
   try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
   return true;
 }
@@ -2015,7 +2017,7 @@ function exposeGlobals(): void {
     enableFriends, setTrack, openTrackFromHome, completeLesson, showCertificate,
     openLessonSheet, completeFromSheet, markAttendance, publishPost, likePost,
     focusComment, addComment, setCalMode, calMove, togglePaid, choosePlan,
-    setPTab, setRole, setTheme, toggleTheme, logout, save, savePupil, saveEditPay,
+    setPTab, setRole, setTheme, toggleTheme, logout, save, flushCloudSave, savePupil, saveEditPay,
     deletePay, editPay, saveMaterial, saveLesson, saveComp, sendCoach,
     openAddJourneyLesson, saveJourneyChapter, saveJourneyLesson,
     openEditJourneyChapter, saveJourneyChapterEdit, deleteJourneyLesson,

@@ -77,6 +77,11 @@ export interface CloudApi {
   /** Create Firebase Auth for student ID without switching the teacher's session. */
   ensureStudentAuth: (studentId: string) => Promise<string | null>;
   publishStudentLink: (link: Omit<StudentLink, 'createdAt' | 'updatedAt'> & { code: string }) => Promise<void>;
+  /** Update name/parent fields on an existing studentLinks doc (keeps uids). */
+  updateStudentLinkProfile: (
+    code: string,
+    data: { studentName?: string; parentName?: string | null; parentPhone?: string | null },
+  ) => Promise<void>;
   getStudentLink: (code: string) => Promise<StudentLink | null>;
   claimStudentLinkAsParent: (code: string, data: { parentUid: string; parentName: string; parentPhone: string }) => Promise<StudentLink>;
   claimStudentLinkAsStudent: (code: string, data: { studentUid: string; studentName: string }) => Promise<StudentLink>;
@@ -174,7 +179,21 @@ export function initFirebase(onReady?: () => void): void {
       },
       publishStudentLink: async (link) => {
         const now = Date.now();
-        await setDoc(doc(db, 'studentLinks', link.code), {
+        const ref = doc(db, 'studentLinks', link.code);
+        const existing = await getDoc(ref);
+        if (existing.exists()) {
+          // Never wipe claimed uids / createdAt on re-publish
+          await updateDoc(ref, {
+            studentName: link.studentName ?? '',
+            crmStudentId: link.crmStudentId,
+            teacherUid: link.teacherUid,
+            parentName: link.parentName ?? null,
+            parentPhone: link.parentPhone ?? null,
+            updatedAt: now,
+          });
+          return;
+        }
+        await setDoc(ref, {
           ...link,
           parentUid: link.parentUid ?? null,
           studentUid: link.studentUid ?? null,
@@ -183,6 +202,16 @@ export function initFirebase(onReady?: () => void): void {
           createdAt: now,
           updatedAt: now,
         });
+      },
+      updateStudentLinkProfile: async (code, data) => {
+        const ref = doc(db, 'studentLinks', code);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
+        const patch: Record<string, unknown> = { updatedAt: Date.now() };
+        if (data.studentName !== undefined) patch.studentName = data.studentName;
+        if (data.parentName !== undefined) patch.parentName = data.parentName ?? null;
+        if (data.parentPhone !== undefined) patch.parentPhone = data.parentPhone ?? null;
+        await updateDoc(ref, patch);
       },
       getStudentLink: async (code) => {
         const snap = await getDoc(doc(db, 'studentLinks', code));
