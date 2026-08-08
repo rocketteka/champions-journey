@@ -341,18 +341,31 @@ window.CJ_CRM = {
         student.studentId = code;
         CrmStore.saveStudent(student);
         const name = [student.firstName, student.lastName].filter(Boolean).join(' ').trim();
+        // Auth account is created here (by teacher), not when the student first opens login
+        let studentUid: string | null = null;
+        if (cloud.ensureStudentAuth) {
+          try { studentUid = await cloud.ensureStudentAuth(code); } catch (e) {
+            console.warn('student Auth create failed', e);
+          }
+        }
         await cloud.publishStudentLink({
           code,
           studentName: name,
           crmStudentId: student.id,
           teacherUid,
           parentUid: null,
-          studentUid: null,
+          studentUid,
           parentName: student.parentName || null,
           parentPhone: student.parentPhone || null,
         });
         window.toast?.(`✓ ${ct('crm_student_saved')} · ID ${code}`);
       } else {
+        // Backfill Auth for students who already have an ID but no Auth user yet
+        if (cloud?.ensureStudentAuth && student?.studentId) {
+          try { await cloud.ensureStudentAuth(student.studentId); } catch (e) {
+            console.warn('student Auth ensure failed', e);
+          }
+        }
         window.toast?.('✓ ' + ct('crm_student_saved') + (student?.studentId ? ` · ID ${student.studentId}` : ''));
       }
     } catch (e) {

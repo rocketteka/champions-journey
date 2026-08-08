@@ -19,7 +19,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import type { AppState } from './types';
-import { randomStudentId } from './auth-ids';
+import { randomStudentId, studentAuthEmail, studentAuthPassword } from './auth-ids';
 
 /** Web config from `.env` (see `.env.example` and docs/FIREBASE_SETUP.md). */
 const firebaseConfig = {
@@ -74,6 +74,8 @@ export interface CloudApi {
   load: (uid: string) => Promise<AppState | null>;
   save: (uid: string, state: AppState) => Promise<void>;
   allocateStudentId: () => Promise<string>;
+  /** Create Firebase Auth for student ID without switching the teacher's session. */
+  ensureStudentAuth: (studentId: string) => Promise<string | null>;
   publishStudentLink: (link: Omit<StudentLink, 'createdAt' | 'updatedAt'> & { code: string }) => Promise<void>;
   getStudentLink: (code: string) => Promise<StudentLink | null>;
   claimStudentLinkAsParent: (code: string, data: { parentUid: string; parentName: string; parentPhone: string }) => Promise<StudentLink>;
@@ -146,6 +148,29 @@ export function initFirebase(onReady?: () => void): void {
           if (!snap.exists()) return code;
         }
         throw new Error('Could not allocate student ID');
+      },
+      // REST signUp keeps the current teacher session (unlike createUserWithEmailAndPassword)
+      ensureStudentAuth: async (studentId) => {
+        const apiKey = firebaseConfig.apiKey?.trim();
+        if (!apiKey) throw new Error('Firebase API key missing');
+        const email = studentAuthEmail(studentId);
+        const password = studentAuthPassword(studentId);
+        const res = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(apiKey)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, returnSecureToken: true }),
+          },
+        );
+        const data = (await res.json()) as {
+          localId?: string;
+          error?: { message?: string };
+        };
+        if (data.localId) return data.localId;
+        const msg = data.error?.message || '';
+        if (msg === 'EMAIL_EXISTS') return null;
+        throw new Error(msg || 'STUDENT_AUTH_CREATE_FAILED');
       },
       publishStudentLink: async (link) => {
         const now = Date.now();
