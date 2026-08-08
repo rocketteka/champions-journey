@@ -180,6 +180,10 @@ Teacher and admin see CRM and Path editing. Data syncs per signed-in user.
 
 The app is a static Vite build. Deploy with the included `Dockerfile`, which serves `dist/` on **`$PORT`** (Cloud Run sets `8080`).
 
+Firebase web config must be present at **build** time (`VITE_FIREBASE_*`).  
+Source deploy / buildpacks pick up committed [`.env.production`](.env.production).  
+Do not rely on Cloud Run *runtime* env vars for Vite — they are too late.
+
 ```bash
 # Local check (must listen on 8080)
 docker build -t champions-journey .

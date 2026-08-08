@@ -24,6 +24,22 @@ cp .env.example .env
 # paste apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId into .env
 ```
 
+For **Cloud Run / CI**, Vite needs these vars at **build** time (they are baked into JS).  
+The repo includes [`.env.production`](../.env.production) with the public web config for `champions-journey-ffb8d`, so `npm run build` works without a private `.env`.
+
+If you use Docker instead of buildpacks:
+
+```bash
+docker build \
+  --build-arg VITE_FIREBASE_API_KEY=... \
+  --build-arg VITE_FIREBASE_AUTH_DOMAIN=... \
+  --build-arg VITE_FIREBASE_PROJECT_ID=... \
+  --build-arg VITE_FIREBASE_STORAGE_BUCKET=... \
+  --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID=... \
+  --build-arg VITE_FIREBASE_APP_ID=... \
+  -t champions-journey .
+```
+
 Update `.firebaserc` if your project id is not `champions-journey-ffb8d`.
 
 ## 3. Deploy rules

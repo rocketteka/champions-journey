@@ -100,7 +100,9 @@ export function initFirebase(onReady?: () => void): void {
   try {
     if (!isConfigured()) {
       console.warn(
-        'Firebase: missing VITE_FIREBASE_* in .env — cloud auth/sync disabled. See docs/FIREBASE_SETUP.md',
+        'Firebase: missing VITE_FIREBASE_* at build time — cloud auth/sync disabled. '
+          + 'For local: copy .env.example → .env. For Cloud Run: commit/update .env.production and redeploy. '
+          + 'See docs/FIREBASE_SETUP.md',
       );
       onReady?.();
       return;
