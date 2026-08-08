@@ -11,6 +11,7 @@ import {
   studentAuthEmail,
   studentAuthPassword,
 } from '@/core/auth-ids';
+import { appVersionLabel } from '@/core/build-info';
 import '@/crm/register';
 import { ensureCrm } from '@/crm/migrate';
 
@@ -115,7 +116,7 @@ const I18N = {
     materials:"Материалы", add_material:"Загрузить материал", upload:"Загрузить файл", download:"Скачать",
     achievements:"Достижения", locked:"Закрыто", track_locked:"Этот трек скоро откроется", track_locked_hint:"Доступно по подписке школы", upgrade:"Оформить подписку", unit_label:"РАЗДЕЛ", lesson_start:"СТАРТ", unit_locked:"Завершите предыдущий раздел", add_section:"Добавить раздел", edit_section:"Изменить раздел", add_lesson:"Добавить урок", edit_lesson:"Изменить урок", delete_lesson:"Удалить урок", delete_lesson_confirm:"Удалить урок «{name}»?", lesson_link:"Ссылка на урок", lesson_duration:"Длительность (мин)", certificate:"Сертификат", cert_title:"Сертификат о прохождении", cert_unit_done:"Раздел пройден!", cert_for:"подтверждает, что", cert_completed:"успешно завершил(а) раздел", cert_download:"Скачать сертификат", cert_get:"Получить сертификат", cert_points:"баллов набрано", land_desc:"Наша платформа — это не просто LMS. Это скорее сочетание Coursera + Duolingo + Brilliant + Codecademy + Notion + AI-наставника, а не типичный онлайн-курс.", brand_tag:"FIRST · WRO · STEM Projects · Drones · AI · Robotics", land_cta:"Начать обучение", land_login:"У меня уже есть аккаунт", land_back:"Назад", land_program:"Программа обучения", land_th_sec:"№", land_th_name:"Раздел", land_th_lessons:"Уроков", land_get:"Что вы получите", land_pricing:"Тарифы", f_road:"Геймификация обучения в стиле Duolingo", f_pts:"+10 баллов за каждое выполненное задание", f_cert:"Сертификат за каждый пройденный раздел", f_lang:"3 языка: Русский, Қазақша, English", f_cal:"Календарь соревнований по робототехнике", f_crm:"CRM для учителей и руководителей", f_paths:"Структурированные траектории обучения", f_progress:"Отслеживание прогресса и дорожные карты", f_goals:"Обучение, ориентированное на цели", land_req:"Что требуется для обучения?", land_req_1:"Ноутбук или планшет", land_req_2:"Lego Spike Prime", land_req_3:"Интернет-соединение", land_final_t:"Готовы начать путь чемпиона?", land_final_s:"Доступ открывается сразу. Начните обучение.", land_footer:"Сделано в Казахстане 🇰🇿", land_more_tracks:"и ещё", open_lesson:"Открыть урок (Canva)", 
     subs:"Подписки", choose:"Выбрать план", current:"Текущий план", recommended:"Рекомендуем",
-    settings:"Настройки", language:"Язык", theme:"Тема", theme_light:"Светлая", theme_dark:"Тёмная", logout:"Выйти", role:"Роль",
+    settings:"Настройки", language:"Язык", theme:"Тема", theme_light:"Светлая", theme_dark:"Тёмная", logout:"Выйти", role:"Роль", build_version:"Версия сборки",
     role_teacher:"Учитель", role_admin:"Школа / Админ", role_parent:"Родитель", role_student:"Ученик",
     save:"Сохранить", cancel:"Отмена", title:"Название", date:"Дата", time:"Время", group:"Группа",
     name:"Имя", amount:"Сумма (₸)", plan:"Тариф", location:"Место", type:"Тип", category:"Категория",
@@ -152,7 +153,7 @@ const I18N = {
     materials:"Материалдар", add_material:"Материал жүктеу", upload:"Файл жүктеу", download:"Жүктеп алу",
     achievements:"Жетістіктер", locked:"Жабық", track_locked:"Бұл трек жақында ашылады", track_locked_hint:"Мектеп жазылымымен қолжетімді", upgrade:"Жазылым рәсімдеу", unit_label:"БӨЛІМ", lesson_start:"БАСТАУ", unit_locked:"Алдыңғы бөлімді аяқтаңыз", add_section:"Бөлім қосу", edit_section:"Бөлімді өзгерту", add_lesson:"Сабақ қосу", edit_lesson:"Сабақты өзгерту", delete_lesson:"Сабақты жою", delete_lesson_confirm:"«{name}» сабағын жою керек пе?", lesson_link:"Сабақ сілтемесі", lesson_duration:"Ұзақтығы (мин)", certificate:"Сертификат", cert_title:"Аяқтағаны туралы сертификат", cert_unit_done:"Бөлім аяқталды!", cert_for:"растайды:", cert_completed:"бөлімді сәтті аяқтады", cert_download:"Сертификатты жүктеу", cert_get:"Сертификат алу", cert_points:"ұпай жиналды", land_desc:"Біздің платформа — жай LMS емес. Бұл Coursera + Duolingo + Brilliant + Codecademy + Notion + AI-теңгеөздің үйлесіміне жақын, әдеттегі онлайн-курстан емес.", brand_tag:"FIRST · WRO · STEM Projects · Drones · AI · Robotics", land_cta:"Оқуды бастау", land_login:"Менде аккаунт бар", land_back:"Артқа", land_program:"Оқу бағдарламасы", land_th_sec:"№", land_th_name:"Бөлім", land_th_lessons:"Сабақ", land_get:"Сіз не аласыз", land_pricing:"Тарифтер", f_road:"Duolingo стиліндегі оқыту геймификациясы", f_pts:"Әр орындалған тапсырмаға +10 ұпай", f_cert:"Әр аяқталған бөлімге сертификат", f_lang:"3 тіл: Русский, Қазақша, English", f_cal:"Робототехника бойынша жарыстар күнтізбесі", f_crm:"Мұғалімдер мен басшыларға арналған CRM", f_paths:"Құрылымдалған оқу траекториялары", f_progress:"Прогресс бақылауы және жол карталары", f_goals:"Мақсатқа бағытталған оқу", land_req:"Оқу үшін не қажет?", land_req_1:"Ноутбук немесе планшет", land_req_2:"Lego Spike Prime", land_req_3:"Интернет байланысы", land_final_t:"Чемпион жолын бастауға дайынсыз ба?", land_final_s:"Қолжетімділік бірден ашылады. Оқуды бастаңыз.", land_footer:"Қазақстанда жасалған 🇰🇿", land_more_tracks:"тағы", open_lesson:"Сабақты ашу (Canva)", 
     subs:"Жазылымдар", choose:"Жоспарды таңдау", current:"Ағымдағы жоспар", recommended:"Ұсынылады",
-    settings:"Баптаулар", language:"Тіл", theme:"Тақырып", theme_light:"Жарық", theme_dark:"Қараңғы", logout:"Шығу", role:"Рөл",
+    settings:"Баптаулар", language:"Тіл", theme:"Тақырып", theme_light:"Жарық", theme_dark:"Қараңғы", logout:"Шығу", role:"Рөл", build_version:"Жиын нұсқасы",
     role_teacher:"Мұғалім", role_admin:"Мектеп / Әкімші", role_parent:"Ата-ана", role_student:"Оқушы",
     save:"Сақтау", cancel:"Бас тарту", title:"Атауы", date:"Күні", time:"Уақыты", group:"Топ",
     name:"Аты", amount:"Сома (₸)", plan:"Тариф", location:"Орны", type:"Түрі", category:"Санат",
@@ -189,7 +190,7 @@ const I18N = {
     materials:"Materials", add_material:"Upload material", upload:"Upload file", download:"Download",
     achievements:"Achievements", locked:"Locked", track_locked:"This track is coming soon", track_locked_hint:"Available with a school subscription", upgrade:"Get subscription", unit_label:"UNIT", lesson_start:"START", unit_locked:"Finish the previous unit first", add_section:"Add section", edit_section:"Edit section", add_lesson:"Add lesson", edit_lesson:"Edit lesson", delete_lesson:"Delete lesson", delete_lesson_confirm:"Delete lesson \u201c{name}\u201d?", lesson_link:"Lesson link", lesson_duration:"Duration (min)", certificate:"Certificate", cert_title:"Certificate of Completion", cert_unit_done:"Unit complete!", cert_for:"this certifies that", cert_completed:"has successfully completed the unit", cert_download:"Download certificate", cert_get:"Get certificate", cert_points:"points earned", land_desc:"Our platform is not just an LMS. It's closer to a combination of Coursera + Duolingo + Brilliant + Codecademy + Notion + an AI mentor, rather than a typical online course.", brand_tag:"FIRST · WRO · STEM Projects · Drones · AI · Robotics", land_cta:"Start learning", land_login:"I already have an account", land_back:"Back", land_program:"Course program", land_th_sec:"#", land_th_name:"Section", land_th_lessons:"Lessons", land_get:"What you get", land_pricing:"Pricing", f_road:"Duolingo-style learning gamification", f_pts:"+10 points for every completed task", f_cert:"A certificate for each completed unit", f_lang:"3 languages: Russian, Kazakh, English", f_cal:"Calendar of competitions in robotics", f_crm:"CRM for teachers and leaders", f_paths:"Structured learning paths", f_progress:"Progress tracking and roadmaps", f_goals:"Goal-oriented learning", land_req:"What do you need to get started?", land_req_1:"Laptop or tablet", land_req_2:"Lego Spike Prime", land_req_3:"Internet connection", land_final_t:"Ready to start the champion\u2019s journey?", land_final_s:"Access opens instantly. Start learning.", land_footer:"Made in Kazakhstan 🇰🇿", land_more_tracks:"and more", open_lesson:"Open lesson (Canva)", 
     subs:"Subscriptions", choose:"Choose plan", current:"Current plan", recommended:"Recommended",
-    settings:"Settings", language:"Language", theme:"Theme", theme_light:"Light", theme_dark:"Dark", logout:"Log out", role:"Role",
+    settings:"Settings", language:"Language", theme:"Theme", theme_light:"Light", theme_dark:"Dark", logout:"Log out", role:"Role", build_version:"Build version",
     role_teacher:"Teacher", role_admin:"School / Admin", role_parent:"Parent", role_student:"Student",
     save:"Save", cancel:"Cancel", title:"Title", date:"Date", time:"Time", group:"Group",
     name:"Name", amount:"Amount (₸)", plan:"Plan", location:"Location", type:"Type", category:"Category",
@@ -663,7 +664,7 @@ function renderLanding(){
       <p>${t('land_final_s')}</p>
       <button class="lland-cta" onclick="enterApp()">${t('land_cta')} →</button>
     </div>
-    <div class="lland-foot">${logoSVG(26)}<div>${t('land_footer')}</div></div>
+    <div class="lland-foot">${logoSVG(26)}<div>${t('land_footer')}<div class="build-ver">${appVersionLabel()}</div></div></div>
   </div>`;
 }
 function setLang(l,relogin){
@@ -1284,6 +1285,7 @@ function viewSettings(){
     </div>
   </div>
   <button class="btn outline" style="color:var(--red);border-color:var(--red-soft)" onclick="logout()">${SVG.logout} ${t('logout')}</button>
+  <div class="app-build-foot">${t('build_version')}: ${appVersionLabel()}</div>
   `;
 }
 function setRole(r){ S.user.role=r; NAVSTACK=[]; if(SUB==='crm'||SUB==='materials') SUB=null; save(); render(); }
@@ -1561,7 +1563,8 @@ function renderAuth(){
     ${isPhoneRole(LOGIN_ROLE)?`<div style="font-weight:800;margin:16px 0 8px">${t('your_name')}</div>
     <input id="authName" placeholder="${LOGIN_ROLE==='student'?t('auth_name_from_id'):t('your_name')}" value="" ${LOGIN_ROLE==='student'?'readonly':''}>`:''}
     <button class="start" onclick="doCloudAuth()">${t('auth_signin')} →</button>
-    <button class="lland-ghost link" onclick="enterApp()">${t('auth_to_apply')}</button>`;
+    <button class="lland-ghost link" onclick="enterApp()">${t('auth_to_apply')}</button>
+    <div class="app-build-foot">${appVersionLabel()}</div>`;
   app().innerHTML=`<div class="login">${head}${body}</div>`;
 }
 function authBack(){ backToLanding(); }
@@ -1610,6 +1613,7 @@ function renderApply(){
     <input id="applyCity" placeholder="${t('apply_city')}" value="Астана">
     <button class="start" id="applySubmitBtn" onclick="submitApplicationForm()">${t('apply_submit')} →</button>
     <button class="lland-ghost link" onclick="enterExistingAccount()">${t('land_login')}</button>
+    <div class="app-build-foot">${appVersionLabel()}</div>
   </div>`;
 }
 

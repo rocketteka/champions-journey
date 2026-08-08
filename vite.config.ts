@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
@@ -20,9 +21,17 @@ const pages = {
   assess: resolve(__dirname, 'app/assess.html'),
 };
 
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as { version?: string };
+const appVersion = pkg.version || '0.0.0';
+const buildTime = new Date().toISOString();
+
 export default defineConfig({
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },
+  },
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(buildTime),
   },
   build: {
     rollupOptions: { input: pages },

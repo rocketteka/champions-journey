@@ -517,6 +517,8 @@ html[data-theme="dark"] .modal-card{box-shadow:0 24px 64px rgba(0,0,0,.5)}
 .login .lland-ghost.link{margin-top:12px;background:transparent;color:var(--blue);border:none;border-bottom:none;box-shadow:none}
 .login .lland-ghost.link.sub{margin-top:4px;color:var(--muted);opacity:1}
 .lland-foot{display:flex;align-items:center;gap:10px;justify-content:center;padding:22px;color:var(--muted);font-weight:700;font-size:12.5px;text-align:center}
+.build-ver{margin-top:6px;font-size:11px;font-weight:700;opacity:.8;letter-spacing:.02em}
+.app-build-foot{text-align:center;color:var(--muted);font-size:11px;font-weight:700;padding:16px 12px 8px;opacity:.85;letter-spacing:.02em}
 
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty .em{font-size:46px;margin-bottom:10px}
